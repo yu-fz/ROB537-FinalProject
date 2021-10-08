@@ -17,7 +17,7 @@ class Explore2D_Env(gym.Env):
     self.groundTruthMap = np.loadtxt(pathToGroundTruthMap, delimiter=",").astype(int)
     self.agentMap = None
     self.shape = self.groundTruthMap.shape
-    self.objectSpawnCoords = dict()
+    self.objectCoords = dict()
     self.spawnObjects()
     self.generateAgentMap()
     self.agentDetect() #initial agent scan
@@ -31,36 +31,36 @@ class Explore2D_Env(gym.Env):
       #and objective
       coordList.append(np.random.randint(low = 1, high = self.shape[0]-1))
     
-    self.objectSpawnCoords["agent"] = coordList[:2]
-    self.objectSpawnCoords["objective"] = coordList[2:]
-    print(self.objectSpawnCoords["agent"])
-    agentXCoord = self.objectSpawnCoords["agent"][1]
-    agentYCoord = self.objectSpawnCoords["agent"][0]    
+    self.objectCoords["agent"] = coordList[:2]
+    self.objectCoords["objective"] = coordList[2:]
+    print(self.objectCoords["agent"])
+    agentXCoord = self.objectCoords["agent"][1]
+    agentYCoord = self.objectCoords["agent"][0]    
     
-    objectiveXCoord = self.objectSpawnCoords["objective"][1]
-    objectiveYCoord = self.objectSpawnCoords["objective"][0]
+    objectiveXCoord = self.objectCoords["objective"][1]
+    objectiveYCoord = self.objectCoords["objective"][0]
     #check if random spawn location is obstructed
     while(self.groundTruthMap[agentYCoord, agentXCoord] == 1):
       #if grid is obstructed, spawn again 
       print("oops")  
-      self.objectSpawnCoords["agent"][1] = np.random.randint(low = 1, high = self.shape[0]-1)
-      self.objectSpawnCoords["agent"][0] = np.random.randint(low = 1, high = self.shape[0]-1)
-      agentXCoord = self.objectSpawnCoords["agent"][1]
-      agentYCoord = self.objectSpawnCoords["agent"][0]
+      self.objectCoords["agent"][1] = np.random.randint(low = 1, high = self.shape[0]-1)
+      self.objectCoords["agent"][0] = np.random.randint(low = 1, high = self.shape[0]-1)
+      agentXCoord = self.objectCoords["agent"][1]
+      agentYCoord = self.objectCoords["agent"][0]
 
     while(self.groundTruthMap[objectiveYCoord, objectiveXCoord] == 1):
       #if grid is obstructed, spawn again 
       print("oops")  
-      self.objectSpawnCoords["objective"][1] = np.random.randint(low = 1, high = self.shape[0]-1)
-      self.objectSpawnCoords["objective"][0] = np.random.randint(low = 1, high = self.shape[0]-1)
-      objectiveXCoord = self.objectSpawnCoords["objective"][1]
-      objectiveYCoord = self.objectSpawnCoords["objective"][0]
+      self.objectCoords["objective"][1] = np.random.randint(low = 1, high = self.shape[0]-1)
+      self.objectCoords["objective"][0] = np.random.randint(low = 1, high = self.shape[0]-1)
+      objectiveXCoord = self.objectCoords["objective"][1]
+      objectiveYCoord = self.objectCoords["objective"][0]
 
     self.groundTruthMap[agentYCoord, agentXCoord] = 2
     self.groundTruthMap[objectiveYCoord, objectiveXCoord] = 3
   
   def generateAgentMap(self):
-    agentPosition = self.objectSpawnCoords["agent"]  
+    agentPosition = self.objectCoords["agent"]  
     self.agentMap = np.full(self.shape, 4, dtype=int)
     self.agentMap[agentPosition[0], agentPosition[1]] = 2
     #print(self.agentMap)
@@ -68,20 +68,58 @@ class Explore2D_Env(gym.Env):
   def agentDetect(self):
     #given agents position, reveal adjacent grids
     #updates the agent map 
-    agentPosition = self.objectSpawnCoords["agent"] 
+    agentPosition = self.objectCoords["agent"] 
     #dictionary of adjacent grids
-    adjacentGridDict = dict()
+
     detectionRadius = 1
     print(agentPosition)
     for i in range(agentPosition[0]-detectionRadius, agentPosition[0] + detectionRadius + 1):
       for j in range(agentPosition[1]-detectionRadius, agentPosition[1] + detectionRadius + 1):
-        if( i in range(0,30) and j in range(0,30)):
+        if( i in range(0,self.shape[0]) and j in range(0,self.shape[0])):
           self.agentMap[i,j] = self.groundTruthMap[i,j]
 
-    #self.agentMap
-    print(adjacentGridDict)
-         
+  def updateMaps(self, currPos, newPos):
+    self.groundTruthMap[tuple(newPos)] = 2
+    self.groundTruthMap[tuple(currPos)] = 0
+    self.agentMap[tuple(currPos)] = 0
+    self.agentMap[tuple(newPos)] = 2
+    self.objectCoords["agent"] = newPos
+    self.agentDetect()
+
+
   def step(self, action):
+    # [1,2,3,4] -> [up, down, left, right]
+    currAgentPos = self.objectCoords["agent"] 
+    if(action == 1):
+      #move up
+      newAgentPos = [currAgentPos[0]-1, currAgentPos[1]]
+      if(self.groundTruthMap[tuple(newAgentPos)] == 1):
+        ... #terminate, return done and give penalty or whatever 
+      else:
+        self.updateMaps(currAgentPos, newAgentPos)
+          #print(self.objectCoords["agent"])
+    elif(action == 2):
+      #move down
+      newAgentPos = [currAgentPos[0]+1, currAgentPos[1]]
+      if(self.groundTruthMap[tuple(newAgentPos)] == 1):
+        ... #terminate, return done and give penalty or whatever 
+      else:
+        self.updateMaps(currAgentPos, newAgentPos)
+
+    elif(action == 3):
+      #move left
+      newAgentPos = [currAgentPos[0], currAgentPos[1]-1]
+      if(self.groundTruthMap[tuple(newAgentPos)] == 1):
+        ... #terminate, return done and give penalty or whatever 
+      else:
+        self.updateMaps(currAgentPos, newAgentPos)
+    elif(action == 4):
+      #move right
+      newAgentPos = [currAgentPos[0], currAgentPos[1]+1]
+      if(self.groundTruthMap[tuple(newAgentPos)] == 1):
+        ... #terminate, return done and give penalty or whatever 
+      else:
+        self.updateMaps(currAgentPos, newAgentPos)
     #if agent steps into unoccupied square, move agent 
       #get current agent position, set to unoccupied.
       #get coordinates of new agent position
@@ -96,12 +134,20 @@ class Explore2D_Env(gym.Env):
   def reset(self):
     ...
   def render(self, mode='human'):
-    plt.imshow(self.groundTruthMap)
-    plt.show()
+    
+    #plt.imshow(self.groundTruthMap)
+    #plt.show()
     plt.imshow(self.agentMap)
     plt.show()
   def close(self):
     ...
 
 myEnv = Explore2D_Env()
+myEnv.render()
+
+for i in range(10000):
+  randomMove = np.random.randint(low =1, high = 5)
+  myEnv.step(randomMove)
+  #myEnv.render()
+
 myEnv.render()
