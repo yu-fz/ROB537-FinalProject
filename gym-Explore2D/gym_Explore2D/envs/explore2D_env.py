@@ -6,7 +6,7 @@ from gym import error, spaces, utils
 from gym.spaces import Discrete, Box
 from gym.utils import seeding
 
-
+#from stable_baselines.common.env_checker import check_env
 pathToGroundTruthMap = "./gridWorld.csv"
 
 class Explore2D_Env(gym.Env):
@@ -18,9 +18,11 @@ class Explore2D_Env(gym.Env):
     self.agentMap = None
     self.shape = self.groundTruthMap.shape
     self.objectCoords = dict()
-    self.spawnObjects()
-    self.generateAgentMap()
-    self.agentDetect() #initial agent scan
+    # self.spawnObjects()
+    # plt.imshow(self.groundTruthMap)
+    # plt.show()
+    # self.generateAgentMap()
+    # self.agentDetect() #initial agent scan
     self.action_space = Discrete(4)
     self.observation_space = Box(low=0, high=4, shape=(30, 30), dtype=int)
 
@@ -42,7 +44,7 @@ class Explore2D_Env(gym.Env):
     #check if random spawn location is obstructed
     while(self.groundTruthMap[agentYCoord, agentXCoord] == 1):
       #if grid is obstructed, spawn again 
-      print("oops")  
+      #print("oops")  
       self.objectCoords["agent"][1] = np.random.randint(low = 1, high = self.shape[0]-1)
       self.objectCoords["agent"][0] = np.random.randint(low = 1, high = self.shape[0]-1)
       agentXCoord = self.objectCoords["agent"][1]
@@ -50,7 +52,7 @@ class Explore2D_Env(gym.Env):
 
     while(self.groundTruthMap[objectiveYCoord, objectiveXCoord] == 1):
       #if grid is obstructed, spawn again 
-      print("oops")  
+      #print("oops")  
       self.objectCoords["objective"][1] = np.random.randint(low = 1, high = self.shape[0]-1)
       self.objectCoords["objective"][0] = np.random.randint(low = 1, high = self.shape[0]-1)
       objectiveXCoord = self.objectCoords["objective"][1]
@@ -89,37 +91,51 @@ class Explore2D_Env(gym.Env):
 
   def step(self, action):
     # [1,2,3,4] -> [up, down, left, right]
+    done = False
+    reward = 0
     currAgentPos = self.objectCoords["agent"] 
     if(action == 1):
       #move up
       newAgentPos = [currAgentPos[0]-1, currAgentPos[1]]
       if(self.groundTruthMap[tuple(newAgentPos)] == 1):
-        ... #terminate, return done and give penalty or whatever 
+        ... #terminate, return done and give penalty or whatever
+        reward = -500
+        done = True 
       else:
         self.updateMaps(currAgentPos, newAgentPos)
+        reward = 1
           #print(self.objectCoords["agent"])
     elif(action == 2):
       #move down
       newAgentPos = [currAgentPos[0]+1, currAgentPos[1]]
       if(self.groundTruthMap[tuple(newAgentPos)] == 1):
-        ... #terminate, return done and give penalty or whatever 
+        ... #terminate, return done and give penalty or whatever
+        reward = -500
+        done = True 
       else:
         self.updateMaps(currAgentPos, newAgentPos)
+        reward = 1
 
     elif(action == 3):
       #move left
       newAgentPos = [currAgentPos[0], currAgentPos[1]-1]
       if(self.groundTruthMap[tuple(newAgentPos)] == 1):
-        ... #terminate, return done and give penalty or whatever 
+        ... #terminate, return done and give penalty or whatever
+        reward = -500 
+        done = True 
       else:
         self.updateMaps(currAgentPos, newAgentPos)
+        reward = 1
     elif(action == 4):
       #move right
       newAgentPos = [currAgentPos[0], currAgentPos[1]+1]
       if(self.groundTruthMap[tuple(newAgentPos)] == 1):
-        ... #terminate, return done and give penalty or whatever 
+        ... #terminate, return done and give penalty or whatever
+        reward = -500 
+        done = True
       else:
         self.updateMaps(currAgentPos, newAgentPos)
+        reward = 1
     #if agent steps into unoccupied square, move agent 
       #get current agent position, set to unoccupied.
       #get coordinates of new agent position
@@ -128,11 +144,15 @@ class Explore2D_Env(gym.Env):
       #run agent detect
     #else terminate 
 
+      #Optional additional info 
+    info = {}
+    return self.agentMap, reward, done, info
 
-
-    ...
   def reset(self):
-    ...
+    self.spawnObjects()
+    self.generateAgentMap()
+    self.agentDetect()
+    return self.agentMap
   def render(self, mode='human'):
     
     #plt.imshow(self.groundTruthMap)
@@ -140,14 +160,16 @@ class Explore2D_Env(gym.Env):
     plt.imshow(self.agentMap)
     plt.show()
   def close(self):
-    ...
+    pass
 
-myEnv = Explore2D_Env()
-myEnv.render()
+#myEnv = Explore2D_Env()
+#check_env(myEnv, warn=True)
 
-for i in range(10000):
-  randomMove = np.random.randint(low =1, high = 5)
-  myEnv.step(randomMove)
-  #myEnv.render()
+# for i in range(10000):
+#   randomMove = np.random.randint(low =1, high = 5)
+#   myEnv.step(randomMove)
+#   #myEnv.render()
 
-myEnv.render()
+# myEnv.render()
+# myEnv.reset()
+# myEnv.render()
