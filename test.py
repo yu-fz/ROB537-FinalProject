@@ -1,8 +1,8 @@
 import gym
 import gym_Explore2D
 import numpy as np
+import torch
 
-#env = gym.make('gym_Explore2D:Explore2D-v0')
 env = gym.make('Explore2D-v0')
 env.reset()
 totalReward = 0
