@@ -2,12 +2,14 @@ import gym
 import numpy as np 
 import matplotlib.pyplot as plt
 import pandas as pd
+import torch
 from gym import error, spaces, utils
 from gym.spaces import Discrete, Box
 from gym.utils import seeding
 
 #from stable_baselines.common.env_checker import check_env
-pathToGroundTruthMap = "./gridWorld.csv"
+pathToGroundTruthMap = "./gridWorld_16x16.csv"
+device = "cuda"
 
 class Explore2D_Env(gym.Env):
   metadata = {'render.modes': ['human']}
@@ -16,16 +18,16 @@ class Explore2D_Env(gym.Env):
     #import ground truth
     self.groundTruthMap = np.loadtxt(pathToGroundTruthMap, delimiter=",").astype(int)
     self.agentMap = None
+    self.state = None #state is agentMap array combined with number of steps remaining
     self.shape = self.groundTruthMap.shape
     self.objectCoords = dict()
-    # self.spawnObjects()
-    # plt.imshow(self.groundTruthMap)
-    # plt.show()
-    # self.generateAgentMap()
-    # self.agentDetect() #initial agent scan
+    #stepLimit is the maximum episode length -> emulates agent battery limits 
+    self.stepLimit = 0
     self.action_space = Discrete(4)
-    self.observation_space = Box(low=0, high=4, shape=(30, 30), dtype=int)
+    self.observation_space = Box(low=0, high=4, shape=self.groundTruthMap.shape, dtype=int)
 
+  def getEnvSize(self):
+    return self.shape
   def spawnObjects(self):
     coordList = []
     for i in range(4):
@@ -34,8 +36,8 @@ class Explore2D_Env(gym.Env):
       coordList.append(np.random.randint(low = 1, high = self.shape[0]-1))
     
     self.objectCoords["agent"] = coordList[:2]
+    #self.objectCoords["agent"] = [13,7]
     self.objectCoords["objective"] = coordList[2:]
-    print(self.objectCoords["agent"])
     agentXCoord = self.objectCoords["agent"][1]
     agentYCoord = self.objectCoords["agent"][0]    
     
@@ -67,14 +69,17 @@ class Explore2D_Env(gym.Env):
     self.agentMap[agentPosition[0], agentPosition[1]] = 2
     #print(self.agentMap)
 
+  def setStepLimit(self, stepLimit):
+    self.stepLimit = stepLimit
+
   def agentDetect(self):
     #given agents position, reveal adjacent grids
     #updates the agent map 
     agentPosition = self.objectCoords["agent"] 
     #dictionary of adjacent grids
 
-    detectionRadius = 1
-    print(agentPosition)
+    detectionRadius = 3
+    #print(agentPosition)
     for i in range(agentPosition[0]-detectionRadius, agentPosition[0] + detectionRadius + 1):
       for j in range(agentPosition[1]-detectionRadius, agentPosition[1] + detectionRadius + 1):
         if( i in range(0,self.shape[0]) and j in range(0,self.shape[0])):
@@ -88,18 +93,40 @@ class Explore2D_Env(gym.Env):
     self.objectCoords["agent"] = newPos
     self.agentDetect()
 
+  def clearAgentMap(self):
+    #called upon episode termination so network knows not to predict next Q
+    self.agentMap = np.full(self.shape, 9, dtype=int) 
+
+  def numActionsAvailable(self):
+    return self.action_space.n
+
+  def getState(self):
+    stepLimitVector = np.zeros(self.shape[0])
+    stepLimitVector[0] = self.stepLimit
+    #print(np.vstack((self.agentMap,stepLimitVector)))
+    #return np.vstack((self.agentMap,stepLimitVector))
+    return self.agentMap
 
   def step(self, action):
     # [1,2,3,4] -> [up, down, left, right]
     done = False
     reward = 0
     currAgentPos = self.objectCoords["agent"] 
+    self.stepLimit -= 1
+    if(self.stepLimit == 0):
+      ##End of Episode
+      self.clearAgentMap()
+      info = {}
+      done = True
+      return torch.from_numpy(self.getState()).to(device), reward, done, info
+      
     if(action == 1):
       #move up
       newAgentPos = [currAgentPos[0]-1, currAgentPos[1]]
       if(self.groundTruthMap[tuple(newAgentPos)] == 1):
         ... #terminate, return done and give penalty or whatever
-        reward = -500
+        reward = -300
+        self.clearAgentMap()
         done = True 
       else:
         self.updateMaps(currAgentPos, newAgentPos)
@@ -110,7 +137,8 @@ class Explore2D_Env(gym.Env):
       newAgentPos = [currAgentPos[0]+1, currAgentPos[1]]
       if(self.groundTruthMap[tuple(newAgentPos)] == 1):
         ... #terminate, return done and give penalty or whatever
-        reward = -500
+        reward = -300
+        self.clearAgentMap()
         done = True 
       else:
         self.updateMaps(currAgentPos, newAgentPos)
@@ -121,7 +149,8 @@ class Explore2D_Env(gym.Env):
       newAgentPos = [currAgentPos[0], currAgentPos[1]-1]
       if(self.groundTruthMap[tuple(newAgentPos)] == 1):
         ... #terminate, return done and give penalty or whatever
-        reward = -500 
+        reward = -300
+        self.clearAgentMap()
         done = True 
       else:
         self.updateMaps(currAgentPos, newAgentPos)
@@ -131,7 +160,8 @@ class Explore2D_Env(gym.Env):
       newAgentPos = [currAgentPos[0], currAgentPos[1]+1]
       if(self.groundTruthMap[tuple(newAgentPos)] == 1):
         ... #terminate, return done and give penalty or whatever
-        reward = -500 
+        reward = -300
+        self.clearAgentMap()
         done = True
       else:
         self.updateMaps(currAgentPos, newAgentPos)
@@ -146,19 +176,29 @@ class Explore2D_Env(gym.Env):
 
       #Optional additional info 
     info = {}
-    return self.agentMap, reward, done, info
+    #return self.getState()
+    return torch.from_numpy(self.getState()).to(device), reward, done, info
 
   def reset(self):
+    self.stepLimit = 300
+    objectiveCoords = np.where(self.groundTruthMap == 3)
+    agentCoords = np.where(self.groundTruthMap == 2)
+    self.groundTruthMap[agentCoords] = 0
+    self.groundTruthMap[objectiveCoords] =0
+    self.agentMap = self.groundTruthMap
     self.spawnObjects()
     self.generateAgentMap()
     self.agentDetect()
-    return self.agentMap
+    #return self.getState()
+    return torch.from_numpy(self.getState()).to(device)
+
   def render(self, mode='human'):
     
     #plt.imshow(self.groundTruthMap)
     #plt.show()
     plt.imshow(self.agentMap)
     plt.show()
+
   def close(self):
     pass
 
