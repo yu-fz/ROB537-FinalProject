@@ -10,7 +10,7 @@ from gym.utils import seeding
 
 
 #from stable_baselines.common.env_checker import check_env
-pathToGroundTruthMap = "./gridWorld.csv"
+pathToGroundTruthMap = "./maps/gridWorld_easy.csv"
 
 class Explore2D_Env(gym.Env):
   metadata = {'render.modes': ['human']}
