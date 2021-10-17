@@ -10,7 +10,7 @@ from gym.utils import seeding
 
 
 #from stable_baselines.common.env_checker import check_env
-pathToGroundTruthMap = "./gridWorld.csv"
+pathToGroundTruthMap = "./gridWorld_16x16.csv"
 
 class Explore2D_Env(gym.Env):
   metadata = {'render.modes': ['human']}
@@ -90,11 +90,11 @@ class Explore2D_Env(gym.Env):
           self.agentMap[i,j] = self.groundTruthMap[i,j]
 
   def calculateRewards(self):
-    occurrences = np.count_nonzero(self.agentMap == 4)
-    infoGain = self.numOfHiddenGrids - occurrences
+    occurrences = np.count_nonzero(self.agentMap == 4) + 8
+    infoGain = self.numOfHiddenGrids - occurrences 
     self.numOfHiddenGrids = occurrences
     if(infoGain == 0):
-      return -5
+      return 0
     else:
       return infoGain
     #print(infoGain)
@@ -140,9 +140,9 @@ class Explore2D_Env(gym.Env):
       newAgentPos = [currAgentPos[0]-1, currAgentPos[1]]
       if(self.groundTruthMap[tuple(newAgentPos)] == 1):
         #terminate, return done and give penalty or whatever
-        reward = -10
-        #self.clearAgentMap()
-        #done = True 
+        #reward = 0
+        self.clearAgentMap()
+        done = True 
       else:
         self.updateMaps(currAgentPos, newAgentPos)
         reward = self.calculateRewards()
@@ -152,9 +152,9 @@ class Explore2D_Env(gym.Env):
       newAgentPos = [currAgentPos[0]+1, currAgentPos[1]]
       if(self.groundTruthMap[tuple(newAgentPos)] == 1):
         #terminate, return done and give penalty or whatever
-        reward = -10
-        #self.clearAgentMap()
-        #done = True 
+        reward = 0
+        self.clearAgentMap()
+        done = True 
       else:
         self.updateMaps(currAgentPos, newAgentPos)
         reward = self.calculateRewards()
@@ -164,9 +164,9 @@ class Explore2D_Env(gym.Env):
       newAgentPos = [currAgentPos[0], currAgentPos[1]-1]
       if(self.groundTruthMap[tuple(newAgentPos)] == 1):
         #terminate, return done and give penalty or whatever
-        reward = -10
-        #self.clearAgentMap()
-        #done = True 
+        reward = 0
+        self.clearAgentMap()
+        done = True 
       else:
         self.updateMaps(currAgentPos, newAgentPos)
         reward = self.calculateRewards()
@@ -175,9 +175,9 @@ class Explore2D_Env(gym.Env):
       newAgentPos = [currAgentPos[0], currAgentPos[1]+1]
       if(self.groundTruthMap[tuple(newAgentPos)] == 1):
         #terminate, return done and give penalty or whatever
-        reward = -10
-        #self.clearAgentMap()
-        #done = True
+        reward = 0
+        self.clearAgentMap()
+        done = True
       else:
         self.updateMaps(currAgentPos, newAgentPos)
         reward = self.calculateRewards()
