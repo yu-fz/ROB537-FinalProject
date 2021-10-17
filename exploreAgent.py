@@ -23,26 +23,28 @@ run = wandb.init(
       save_code=True,  # optional))
 )
 
-env = make_vec_env('Explore2D-v0', n_envs = 20)
-#env = gym.make('Explore2D-v0')
+#env = make_vec_env('Explore2D-v0', n_envs = 45)
+env = gym.make('Explore2D-v0')
 
-checkpoint_on_event = CheckpointCallback(save_freq=1, save_path='./logs/PPO', name_prefix="run1-8-16")
-event_callback = EveryNTimesteps(n_steps=10000000, callback=checkpoint_on_event)
+checkpoint_on_event = CheckpointCallback(save_freq=1, save_path='./logs/PPO')
+event_callback = EveryNTimesteps(n_steps=5000, callback=checkpoint_on_event)
 
-model = PPO("MlpPolicy", env, verbose=1, tensorboard_log="./explorationAgent_tensorboard/")
+#model = PPO("MlpPolicy", env, verbose=1, tensorboard_log="./explorationAgent_tensorboard/")
+model = PPO.load("./logs/PPO/rl_model_458640_steps", env, verbose=1)
 #model = A2C("MlpPolicy", env, verbose=1, tensorboard_log="./explorationAgent_tensorboard/")
-#model = A2C.load("./logs/DDPG/run1-8-16_140005376_steps",env, verbose=1, tensorboard_log="./explorationAgent_tensorboard/")
-model.learn(total_timesteps=1000000000, 
-            tb_log_name="first_run", 
-            callback=event_callback, 
-      )
+#model = A2C.load("./logs/A2C/run1-8-16_10000384_steps",env, verbose=1, tensorboard_log="./explorationAgent_tensorboard/")
+# model.learn(total_timesteps=10000000000, 
+#             tb_log_name="first_run", 
+#             callback=event_callback, 
+#       )
 #model.save("trainedAgent")
 
-# obs = env.reset()
-# for i in range(1000):
-#     action, _states = model.predict(obs, deterministic=True)
-#     print(action)
-#     obs, reward, done, info = env.step(action)
-#     env.render()
-#     if done:
-#       break
+obs = env.reset()
+for i in range(1000):
+    action, _states = model.predict(obs, deterministic=True)
+    #print(action)
+    obs, reward, done, info = env.step(action)
+    print(reward)
+    env.render()
+    if done:
+      break
