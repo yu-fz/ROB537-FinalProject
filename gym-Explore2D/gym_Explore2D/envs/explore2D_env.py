@@ -2,21 +2,19 @@ import gym
 import numpy as np 
 import matplotlib.pyplot as plt
 import pandas as pd
-import torch
-import math
+
 from gym import error, spaces, utils
 from gym.spaces import Discrete, Box
 from gym.utils import seeding
 
 
-#from stable_baselines.common.env_checker import check_env
-pathToGroundTruthMap = "./maps/gridWorld_easy.csv"
 
 class Explore2D_Env(gym.Env):
   metadata = {'render.modes': ['human']}
     ###logic for environment goes here
   def __init__(self):
     #import ground truth
+    pathToGroundTruthMap = "./maps/gridWorld_easy.csv"
     self.groundTruthMap = np.loadtxt(pathToGroundTruthMap, delimiter=",").astype(int)
     self.agentMap = None
     self.state = None #state is agentMap array combined with number of steps remaining
@@ -82,7 +80,7 @@ class Explore2D_Env(gym.Env):
     agentPosition = self.objectCoords["agent"] 
     #dictionary of adjacent grids
 
-    detectionRadius = 1
+    detectionRadius = 3
     #print(agentPosition)
     for i in range(agentPosition[0]-detectionRadius, agentPosition[0] + detectionRadius + 1):
       for j in range(agentPosition[1]-detectionRadius, agentPosition[1] + detectionRadius + 1):
@@ -90,7 +88,7 @@ class Explore2D_Env(gym.Env):
           self.agentMap[i,j] = self.groundTruthMap[i,j]
 
   def calculateRewards(self):
-    occurrences = np.count_nonzero(self.agentMap == 4) + 8
+    occurrences = np.count_nonzero(self.agentMap == 4)
     infoGain = self.numOfHiddenGrids - occurrences 
     self.numOfHiddenGrids = occurrences
     if(infoGain == 0):
@@ -216,6 +214,57 @@ class Explore2D_Env(gym.Env):
 
   def close(self):
     pass
+
+class Explore2D_Env_Easy(Explore2D_Env):
+  def __init__(self):
+
+    pathToGroundTruthMap = "./maps/gridWorld_easy.csv"
+    self.groundTruthMap = np.loadtxt(pathToGroundTruthMap, delimiter=",").astype(int)
+    self.agentMap = None
+    self.state = None #state is agentMap array combined with number of steps remaining
+    self.shape = self.groundTruthMap.shape
+    self.numOfHiddenGrids = None
+    self.objectCoords = dict()
+    #stepLimit is the maximum episode length -> emulates agent battery limits 
+    self.stepLimit = 0
+    self.action_space = Discrete(3)
+    self.observation_space = Box(low=0, high=9, shape=self.groundTruthMap.shape, dtype=int)
+
+
+
+class Explore2D_Env_Medium(Explore2D_Env):
+  def __init__(self):
+
+    pathToGroundTruthMap = "./maps/gridWorld_medium.csv"
+    self.groundTruthMap = np.loadtxt(pathToGroundTruthMap, delimiter=",").astype(int)
+    self.agentMap = None
+    self.state = None #state is agentMap array combined with number of steps remaining
+    self.shape = self.groundTruthMap.shape
+    self.numOfHiddenGrids = None
+    self.objectCoords = dict()
+    #stepLimit is the maximum episode length -> emulates agent battery limits 
+    self.stepLimit = 0
+    self.action_space = Discrete(3)
+    self.observation_space = Box(low=0, high=9, shape=self.groundTruthMap.shape, dtype=int)
+
+
+
+class Explore2D_Env_Hard(Explore2D_Env):
+  def __init__(self):
+
+    pathToGroundTruthMap = "./maps/gridWorld_hard.csv"
+    self.groundTruthMap = np.loadtxt(pathToGroundTruthMap, delimiter=",").astype(int)
+    self.agentMap = None
+    self.state = None #state is agentMap array combined with number of steps remaining
+    self.shape = self.groundTruthMap.shape
+    self.numOfHiddenGrids = None
+    self.objectCoords = dict()
+    #stepLimit is the maximum episode length -> emulates agent battery limits 
+    self.stepLimit = 0
+    self.action_space = Discrete(3)
+    self.observation_space = Box(low=0, high=9, shape=self.groundTruthMap.shape, dtype=int)
+
+
 
 #myEnv = Explore2D_Env()
 #check_env(myEnv, warn=True)
