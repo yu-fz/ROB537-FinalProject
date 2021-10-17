@@ -8,8 +8,9 @@ from gym import error, spaces, utils
 from gym.spaces import Discrete, Box
 from gym.utils import seeding
 
+
 #from stable_baselines.common.env_checker import check_env
-pathToGroundTruthMap = "./gridWorld_16x16.csv"
+pathToGroundTruthMap = "./gridWorld.csv"
 
 class Explore2D_Env(gym.Env):
   metadata = {'render.modes': ['human']}
@@ -139,9 +140,9 @@ class Explore2D_Env(gym.Env):
       newAgentPos = [currAgentPos[0]-1, currAgentPos[1]]
       if(self.groundTruthMap[tuple(newAgentPos)] == 1):
         #terminate, return done and give penalty or whatever
-        reward = 0
-        self.clearAgentMap()
-        done = True 
+        reward = -10
+        #self.clearAgentMap()
+        #done = True 
       else:
         self.updateMaps(currAgentPos, newAgentPos)
         reward = self.calculateRewards()
@@ -151,9 +152,9 @@ class Explore2D_Env(gym.Env):
       newAgentPos = [currAgentPos[0]+1, currAgentPos[1]]
       if(self.groundTruthMap[tuple(newAgentPos)] == 1):
         #terminate, return done and give penalty or whatever
-        reward = 0
-        self.clearAgentMap()
-        done = True 
+        reward = -10
+        #self.clearAgentMap()
+        #done = True 
       else:
         self.updateMaps(currAgentPos, newAgentPos)
         reward = self.calculateRewards()
@@ -163,9 +164,9 @@ class Explore2D_Env(gym.Env):
       newAgentPos = [currAgentPos[0], currAgentPos[1]-1]
       if(self.groundTruthMap[tuple(newAgentPos)] == 1):
         #terminate, return done and give penalty or whatever
-        reward = 0
-        self.clearAgentMap()
-        done = True 
+        reward = -10
+        #self.clearAgentMap()
+        #done = True 
       else:
         self.updateMaps(currAgentPos, newAgentPos)
         reward = self.calculateRewards()
@@ -174,9 +175,9 @@ class Explore2D_Env(gym.Env):
       newAgentPos = [currAgentPos[0], currAgentPos[1]+1]
       if(self.groundTruthMap[tuple(newAgentPos)] == 1):
         #terminate, return done and give penalty or whatever
-        reward = 0
-        self.clearAgentMap()
-        done = True
+        reward = -10
+        #self.clearAgentMap()
+        #done = True
       else:
         self.updateMaps(currAgentPos, newAgentPos)
         reward = self.calculateRewards()
@@ -194,7 +195,7 @@ class Explore2D_Env(gym.Env):
     return self.getState(), reward, done, info
 
   def reset(self):
-    self.stepLimit = 300
+    self.stepLimit = 50
     objectiveCoords = np.where(self.groundTruthMap == 3)
     agentCoords = np.where(self.groundTruthMap == 2)
     self.groundTruthMap[agentCoords] = 0
