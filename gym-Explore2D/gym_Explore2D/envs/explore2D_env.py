@@ -3,13 +3,13 @@ import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
 import torch
+import math
 from gym import error, spaces, utils
 from gym.spaces import Discrete, Box
 from gym.utils import seeding
 
 #from stable_baselines.common.env_checker import check_env
 pathToGroundTruthMap = "./gridWorld_16x16.csv"
-device = "cuda"
 
 class Explore2D_Env(gym.Env):
   metadata = {'render.modes': ['human']}
@@ -20,14 +20,16 @@ class Explore2D_Env(gym.Env):
     self.agentMap = None
     self.state = None #state is agentMap array combined with number of steps remaining
     self.shape = self.groundTruthMap.shape
+    self.numOfHiddenGrids = None
     self.objectCoords = dict()
     #stepLimit is the maximum episode length -> emulates agent battery limits 
     self.stepLimit = 0
-    self.action_space = Discrete(4)
-    self.observation_space = Box(low=0, high=4, shape=self.groundTruthMap.shape, dtype=int)
+    self.action_space = Discrete(3)
+    self.observation_space = Box(low=0, high=9, shape=self.groundTruthMap.shape, dtype=int)
 
   def getEnvSize(self):
     return self.shape
+
   def spawnObjects(self):
     coordList = []
     for i in range(4):
@@ -61,12 +63,13 @@ class Explore2D_Env(gym.Env):
       objectiveYCoord = self.objectCoords["objective"][0]
 
     self.groundTruthMap[agentYCoord, agentXCoord] = 2
-    self.groundTruthMap[objectiveYCoord, objectiveXCoord] = 3
+    #self.groundTruthMap[objectiveYCoord, objectiveXCoord] = 3
   
   def generateAgentMap(self):
     agentPosition = self.objectCoords["agent"]  
     self.agentMap = np.full(self.shape, 4, dtype=int)
     self.agentMap[agentPosition[0], agentPosition[1]] = 2
+    self.numOfHiddenGrids = np.count_nonzero(self.agentMap == 4)
     #print(self.agentMap)
 
   def setStepLimit(self, stepLimit):
@@ -78,12 +81,23 @@ class Explore2D_Env(gym.Env):
     agentPosition = self.objectCoords["agent"] 
     #dictionary of adjacent grids
 
-    detectionRadius = 3
+    detectionRadius = 1
     #print(agentPosition)
     for i in range(agentPosition[0]-detectionRadius, agentPosition[0] + detectionRadius + 1):
       for j in range(agentPosition[1]-detectionRadius, agentPosition[1] + detectionRadius + 1):
         if( i in range(0,self.shape[0]) and j in range(0,self.shape[0])):
           self.agentMap[i,j] = self.groundTruthMap[i,j]
+
+  def calculateRewards(self):
+    occurrences = np.count_nonzero(self.agentMap == 4)
+    infoGain = self.numOfHiddenGrids - occurrences
+    self.numOfHiddenGrids = occurrences
+    if(infoGain == 0):
+      return -5
+    else:
+      return infoGain
+    #print(infoGain)
+
 
   def updateMaps(self, currPos, newPos):
     self.groundTruthMap[tuple(newPos)] = 2
@@ -118,54 +132,54 @@ class Explore2D_Env(gym.Env):
       self.clearAgentMap()
       info = {}
       done = True
-      return torch.from_numpy(self.getState()).to(device), reward, done, info
+      return self.getState(), reward, done, info
       
-    if(action == 1):
+    if(action == 0):
       #move up
       newAgentPos = [currAgentPos[0]-1, currAgentPos[1]]
       if(self.groundTruthMap[tuple(newAgentPos)] == 1):
-        ... #terminate, return done and give penalty or whatever
-        reward = -300
+        #terminate, return done and give penalty or whatever
+        reward = 0
         self.clearAgentMap()
         done = True 
       else:
         self.updateMaps(currAgentPos, newAgentPos)
-        reward = 1
+        reward = self.calculateRewards()
           #print(self.objectCoords["agent"])
-    elif(action == 2):
+    elif(action == 1):
       #move down
       newAgentPos = [currAgentPos[0]+1, currAgentPos[1]]
       if(self.groundTruthMap[tuple(newAgentPos)] == 1):
-        ... #terminate, return done and give penalty or whatever
-        reward = -300
+        #terminate, return done and give penalty or whatever
+        reward = 0
         self.clearAgentMap()
         done = True 
       else:
         self.updateMaps(currAgentPos, newAgentPos)
-        reward = 1
+        reward = self.calculateRewards()
 
-    elif(action == 3):
+    elif(action == 2):
       #move left
       newAgentPos = [currAgentPos[0], currAgentPos[1]-1]
       if(self.groundTruthMap[tuple(newAgentPos)] == 1):
-        ... #terminate, return done and give penalty or whatever
-        reward = -300
+        #terminate, return done and give penalty or whatever
+        reward = 0
         self.clearAgentMap()
         done = True 
       else:
         self.updateMaps(currAgentPos, newAgentPos)
-        reward = 1
-    elif(action == 4):
+        reward = self.calculateRewards()
+    elif(action == 3):
       #move right
       newAgentPos = [currAgentPos[0], currAgentPos[1]+1]
       if(self.groundTruthMap[tuple(newAgentPos)] == 1):
-        ... #terminate, return done and give penalty or whatever
-        reward = -300
+        #terminate, return done and give penalty or whatever
+        reward = 0
         self.clearAgentMap()
         done = True
       else:
         self.updateMaps(currAgentPos, newAgentPos)
-        reward = 1
+        reward = self.calculateRewards()
     #if agent steps into unoccupied square, move agent 
       #get current agent position, set to unoccupied.
       #get coordinates of new agent position
@@ -177,7 +191,7 @@ class Explore2D_Env(gym.Env):
       #Optional additional info 
     info = {}
     #return self.getState()
-    return torch.from_numpy(self.getState()).to(device), reward, done, info
+    return self.getState(), reward, done, info
 
   def reset(self):
     self.stepLimit = 300
@@ -190,7 +204,7 @@ class Explore2D_Env(gym.Env):
     self.generateAgentMap()
     self.agentDetect()
     #return self.getState()
-    return torch.from_numpy(self.getState()).to(device)
+    return self.getState()
 
   def render(self, mode='human'):
     
