@@ -37,7 +37,7 @@ class Explore2D_Env(gym.Env):
       coordList.append(np.random.randint(low = 1, high = self.shape[0]-1))
     
     self.objectCoords["agent"] = coordList[:2]
-    #self.objectCoords["agent"] = [13,7]
+    self.objectCoords["agent"] = [7,4]
     self.objectCoords["objective"] = coordList[2:]
     agentXCoord = self.objectCoords["agent"][1]
     agentYCoord = self.objectCoords["agent"][0]    
@@ -80,7 +80,7 @@ class Explore2D_Env(gym.Env):
     agentPosition = self.objectCoords["agent"] 
     #dictionary of adjacent grids
 
-    detectionRadius = 3
+    detectionRadius = 1
     #print(agentPosition)
     for i in range(agentPosition[0]-detectionRadius, agentPosition[0] + detectionRadius + 1):
       for j in range(agentPosition[1]-detectionRadius, agentPosition[1] + detectionRadius + 1):
@@ -94,7 +94,7 @@ class Explore2D_Env(gym.Env):
     if(infoGain == 0):
       return 0
     else:
-      return infoGain
+      return 1
     #print(infoGain)
 
 

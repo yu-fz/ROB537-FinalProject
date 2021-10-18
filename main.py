@@ -71,9 +71,7 @@ if __name__ == "__main__":
                   tb_log_name= args.run_name, 
                   callback=WandbCallback(
                         model_save_freq = args.save_freq,         
-                        model_save_path=".logs/{a}/{b}_{c}".format(a = mode, 
-                                                                  b = args.run_name, 
-                                                                  c = args.env_difficulty),        
+                        model_save_path=f"./logs/{mode}/",        
                         verbose=2, 
                         ) 
                   )
@@ -107,16 +105,20 @@ if __name__ == "__main__":
       elif mode == 'eval':
             env = gym.make(envName)
             model = PPO.load(args.model_path,env)
-            model = A2C.load(args.model_path,env)
+            
             stepCounter = 0
+            done = False
+            obs = env.reset()
             while not done:
-                  action = model.predict(obs, deterministic=True)
-                  #print(action)
+                  env.render()
+                  action, _states = model.predict(obs, deterministic=True)
+
                   obs, reward, done, info = env.step(action)
                   stepCounter+=1
-                  print(reward)
+                  
+                  #print(reward)
             
-            env.render()
+
             print("agent completed {a} time steps".format(a = stepCounter))
 
 
