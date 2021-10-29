@@ -7,8 +7,9 @@ import sys
 
 from stable_baselines3 import PPO
 from stable_baselines3 import A2C
+from stable_baselines3 import DQN
 from stable_baselines3.common.env_util import make_vec_env
-from stable_baselines3.common.callbacks import CheckpointCallback, EveryNTimesteps
+from stable_baselines3.common.callbacks import CheckpointCallback, EveryNTimesteps, EvalCallback
 from wandb.integration.sb3 import WandbCallback
 
 
@@ -64,19 +65,41 @@ if __name__ == "__main__":
 
             env = make_vec_env(envName, n_envs = args.number_of_environments)
             #env.setStepLimit(args.max_moves)
-            model = PPO("MlpPolicy", env, n_steps = args.max_moves, verbose=1, tensorboard_log="./explorationAgent_tensorboard/", seed = args.seed)
+
+            checkpoint_callback = CheckpointCallback(save_freq=args.save_freq, save_path='./logs/',
+                                         name_prefix='rl_model')
+
+            model = PPO("MultiInputPolicy", env, n_steps = args.max_moves, verbose=1, tensorboard_log="./explorationAgent_tensorboard/", seed = args.seed)
             model.learn(
                   
                   total_timesteps=args.total_timesteps, 
                   tb_log_name= args.run_name, 
-                  callback=WandbCallback(
-                        model_save_freq = args.save_freq,         
-                        model_save_path=f"./logs/{mode}/",        
-                        verbose=2, 
-                        ) 
+                  callback=checkpoint_callback
+
                   )
             run.finish()
+      elif mode == 'dqn':
+            run = wandb.init(    
+            project="sb3",      
+            sync_tensorboard=True,  # auto-upload sb3's tensorboard metrics    
 
+            )
+
+            env = gym.make(envName)
+            #env.setStepLimit(args.max_moves)
+
+            checkpoint_callback = CheckpointCallback(save_freq=args.save_freq, save_path='./logs/',
+                                         name_prefix='rl_model')
+
+            model = DQN("MultiInputPolicy", env, learning_starts = 50000, verbose=1, tensorboard_log="./explorationAgent_tensorboard/", seed = args.seed)
+            model.learn(
+                  
+                  total_timesteps=args.total_timesteps, 
+                  tb_log_name= args.run_name, 
+                  callback=checkpoint_callback
+
+                  )
+            run.finish()
 
       elif mode == 'a2c':
             run = wandb.init(    
@@ -87,7 +110,7 @@ if __name__ == "__main__":
 
             env = make_vec_env(envName, n_envs = args.number_of_environments)
             #env.setStepLimit(args.max_moves)
-            model = A2C("MlpPolicy", env, n_steps = args.max_moves, verbose=1, tensorboard_log="./explorationAgent_tensorboard/", seed = args.seed)
+            model = A2C("MlpPolicy", env, verbose=1, tensorboard_log="./explorationAgent_tensorboard/", seed = args.seed)
             model.learn(
                   
                   total_timesteps=args.total_timesteps, 
@@ -104,20 +127,24 @@ if __name__ == "__main__":
 
       elif mode == 'eval':
             env = gym.make(envName)
-            model = PPO.load(args.model_path,env)
+            model = DQN.load(args.model_path,env)
             
             stepCounter = 0
             done = False
             obs = env.reset()
+            #print(obs)
+            rewardCnt = 0 
             while not done:
-                  env.render()
                   action, _states = model.predict(obs, deterministic=True)
-
+                  print(action)
                   obs, reward, done, info = env.step(action)
                   stepCounter+=1
-                  
+                  rewardCnt += reward
+                  #print(obs)
                   #print(reward)
             
+            env.render()
+            print("total reward : {rewardCnt}".format(rewardCnt = rewardCnt))
 
             print("agent completed {a} time steps".format(a = stepCounter))
 
