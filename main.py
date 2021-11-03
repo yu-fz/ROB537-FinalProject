@@ -18,7 +18,7 @@ if __name__ == "__main__":
 
       """Environment"""
 
-      parser.add_argument("--env_difficulty", default="easy", type=str) #easy, medium, or hard 
+      parser.add_argument("--env_map", default= "./maps/gridWorld_easy.csv", type=str) # path to grid map
       parser.add_argument("--number_of_environments", default=56, type = int)
       parser.add_argument("--max_moves", default = 56, type = int)
 
@@ -28,7 +28,7 @@ if __name__ == "__main__":
 
       """logger"""
       parser.add_argument("--logdir",   default="./logs/", type=str)
-      parser.add_argument("--save_freq", default = 2000000, type = int)
+      parser.add_argument("--save_freq", default = 200000, type = int)
       parser.add_argument("--run_name", default= None, type=str)  
 
       """Seed"""
@@ -44,17 +44,7 @@ if __name__ == "__main__":
       args = parser.parse_args()
       print(args.run_name)
 
-      if args.env_difficulty == "easy":
-            
-            envName = "Explore2D-Easy-v0"
-      
-      elif args.env_difficulty == "medium":
-            
-            envName = "Explore2D-Medium-v0"
-      
-      elif args.env_difficulty == "hard":
-            
-            envName = "Explore2D-Hard-v0"
+      envName = "Explore2D-v0"
 
       if mode == 'ppo':
             run = wandb.init(    
@@ -63,10 +53,12 @@ if __name__ == "__main__":
 
             )
 
-            env = make_vec_env(envName, n_envs = args.number_of_environments)
+            path_to_map = args.env_map
+            envkwargs["map"] = path_to_map
+            env = make_vec_env(envName, n_envs = args.number_of_environments, env_kwargs= envkwargs)
             #env.setStepLimit(args.max_moves)
 
-            checkpoint_callback = CheckpointCallback(save_freq=args.save_freq, save_path='./logs/',
+            checkpoint_callback = CheckpointCallback(save_freq=args.save_freq, save_path='./logs/{run_name}'.format(run_name = args.run_name),
                                          name_prefix='rl_model')
 
             model = PPO("MultiInputPolicy", env, n_steps = args.max_moves, verbose=1, tensorboard_log="./explorationAgent_tensorboard/", seed = args.seed)
@@ -85,13 +77,14 @@ if __name__ == "__main__":
 
             )
 
-            env = gym.make(envName)
-            #env.setStepLimit(args.max_moves)
+            path_to_map = args.env_map
+            env = gym.make(envName, map = path_to_map)
+            #env = make_vec_env(envName, n_envs = args.number_of_environments, map = path_to_map)
 
-            checkpoint_callback = CheckpointCallback(save_freq=args.save_freq, save_path='./logs/',
+            checkpoint_callback = CheckpointCallback(save_freq=args.save_freq, save_path='./logs/{run_name}'.format(run_name = args.run_name),
                                          name_prefix='rl_model')
 
-            model = DQN("MultiInputPolicy", env, learning_starts = 50000, verbose=1, tensorboard_log="./explorationAgent_tensorboard/", seed = args.seed)
+            model = DQN("MultiInputPolicy", env, learning_starts = 500000, verbose=1, tensorboard_log="./explorationAgent_tensorboard/", seed = args.seed)
             model.learn(
                   
                   total_timesteps=args.total_timesteps, 
@@ -101,32 +94,10 @@ if __name__ == "__main__":
                   )
             run.finish()
 
-      elif mode == 'a2c':
-            run = wandb.init(    
-            project="sb3",      
-            sync_tensorboard=True,  # auto-upload sb3's tensorboard metrics    
-
-            )
-
-            env = make_vec_env(envName, n_envs = args.number_of_environments)
-            #env.setStepLimit(args.max_moves)
-            model = A2C("MlpPolicy", env, verbose=1, tensorboard_log="./explorationAgent_tensorboard/", seed = args.seed)
-            model.learn(
-                  
-                  total_timesteps=args.total_timesteps, 
-                  tb_log_name= args.run_name, 
-                  callback=WandbCallback(
-                        model_save_freq = args.save_freq,         
-                        model_save_path=".logs/{a}/{b}_{c}".format(a = mode, 
-                                                                  b = args.run_name, 
-                                                                  c = args.env_difficulty),         
-                        verbose=2, 
-                        ) 
-                  )
-            run.finish()
 
       elif mode == 'eval':
-            env = gym.make(envName)
+            path_to_map = args.env_map
+            env = gym.make(envName, map = path_to_map)
             model = DQN.load(args.model_path,env)
             
             stepCounter = 0
