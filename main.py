@@ -1,12 +1,11 @@
 import gym
 import gym_Explore2D
 import wandb
-
+import torch as th
 import argparse
 import sys
 
 from stable_baselines3 import PPO
-from stable_baselines3 import A2C
 from stable_baselines3 import DQN
 from stable_baselines3.common.env_util import make_vec_env
 from stable_baselines3.common.callbacks import CheckpointCallback, EveryNTimesteps, EvalCallback
@@ -81,10 +80,12 @@ if __name__ == "__main__":
             env = gym.make(envName, map = path_to_map)
             #env = make_vec_env(envName, n_envs = args.number_of_environments, map = path_to_map)
 
+            policy_kwargs = dict(activation_fn=th.nn.ReLU, net_arch=[32, 32])
+
             checkpoint_callback = CheckpointCallback(save_freq=args.save_freq, save_path='./logs/{run_name}'.format(run_name = args.run_name),
                                          name_prefix='rl_model')
 
-            model = DQN("MultiInputPolicy", env, learning_starts = 500000, verbose=1, tensorboard_log="./explorationAgent_tensorboard/", seed = args.seed)
+            model = DQN("MultiInputPolicy", env, policy_kwargs=policy_kwargs, learning_starts = 500000, verbose=1, exploration_fraction=0.25, tensorboard_log="./explorationAgent_tensorboard/", seed = args.seed)
             model.learn(
                   
                   total_timesteps=args.total_timesteps, 

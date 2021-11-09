@@ -18,6 +18,8 @@ class Explore2D_Env(gym.Env):
 
     pathToGroundTruthMap = kwargs["map"]
     self.groundTruthMap = np.loadtxt(pathToGroundTruthMap, delimiter=",").astype(int)
+    self.agentMapHistory = deque(maxlen=2)
+    self.agentDistanceHistory = deque(maxlen=2)
     self.agentMap = None
     self.state = None #state is agentMap array combined with number of steps remaining
     self.shape = self.groundTruthMap.shape
@@ -32,11 +34,20 @@ class Explore2D_Env(gym.Env):
     self.distFromObjective = 0
     self.action_space = Discrete(4)
 
-    self.observation_space = spaces.Dict({"AgentMap": spaces.Box(low = 0, high = 3, shape = self.agentMap.shape, dtype = np.uint8), 
+    # self.observation_space = spaces.Dict({"AgentMap": spaces.Box(low = 0, high = 3, shape = self.agentMap.shape, dtype = np.uint8), 
+                                          
+    #                                       #"ObjectivePos": spaces.Box(low = 0, high = 100, shape = np.array([1,2]).shape, dtype = float),
+    #                                       #"AgentPos": spaces.Box(low = 0, high = 100, shape = np.array([1,2]).shape, dtype = float),
+    #                                       "Difference": spaces.Box(low = 0, high = 255, shape = np.array([1,2]).shape, dtype = float)
+    #                                       #"observationMap": spaces.Box(low = 0, high = 3, shape = self.groundTruthMap.shape, dtype = np.uint8),
+    #                                       #"groundTruthMap": spaces.Box(low = 0, high = 3, shape = self.groundTruthMap.shape, dtype = np.uint8)
+    #                                       })
+
+    self.observation_space = spaces.Dict({"AgentMap": spaces.Box(low = 0, high = 3, shape = (3,3,2)), 
                                           
                                           #"ObjectivePos": spaces.Box(low = 0, high = 100, shape = np.array([1,2]).shape, dtype = float),
                                           #"AgentPos": spaces.Box(low = 0, high = 100, shape = np.array([1,2]).shape, dtype = float),
-                                          "Difference": spaces.Box(low = 0, high = 255, shape = np.array([1,2]).shape, dtype = float)
+                                          "Difference": spaces.Box(low = 0, high = 255, shape = (2,2))
                                           #"observationMap": spaces.Box(low = 0, high = 3, shape = self.groundTruthMap.shape, dtype = np.uint8),
                                           #"groundTruthMap": spaces.Box(low = 0, high = 3, shape = self.groundTruthMap.shape, dtype = np.uint8)
                                           })
@@ -93,12 +104,12 @@ class Explore2D_Env(gym.Env):
     #print("agent spawned at" + str(self.objectCoords["agent"]))
     self.groundTruthMap[objectiveYCoord, objectiveXCoord] = 3
   
-  def generateAgentMap(self):
-    agentPosition = self.objectCoords["agent"]
-    agentMapHeight = (2*self.detectionRadius+1)**2  
-    self.agentMap = np.full((agentMapHeight, agentMapHeight), 4, dtype=int)
-    self.agentMap[agentPosition[0], agentPosition[1]] = 2
-    #print(self.agentMap)
+  # def generateAgentMap(self):
+  #   agentPosition = self.objectCoords["agent"]
+  #   agentMapHeight = (2*self.detectionRadius+1)**2  
+  #   self.agentMap = np.full((agentMapHeight, agentMapHeight), 4, dtype=int)
+  #   self.agentMap[agentPosition[0], agentPosition[1]] = 2
+  #   #print(self.agentMap)
 
   def setStepLimit(self, stepLimit):
     self.stepLimit = stepLimit
@@ -149,13 +160,13 @@ class Explore2D_Env(gym.Env):
       
       else: 
 
-        reward = 1
+        reward = 0.1
         return reward, done
 
 
     else:
 
-      reward = -1
+      reward = 0
 
       return reward, done 
     
@@ -175,6 +186,9 @@ class Explore2D_Env(gym.Env):
     #self.agentMap[tuple(newPos)] = 2
     self.objectCoords["agent"] = newPos
     self.agentDetect()
+    self.agentMapHistory.append(self.agentMap)
+    self.agentDistanceHistory.append(np.array(self.objectCoords["objective"]) - np.array(self.objectCoords["agent"]))
+
 
 
   def numActionsAvailable(self):
@@ -184,8 +198,13 @@ class Explore2D_Env(gym.Env):
     
     obsDict = {}
 
-    obsDict["AgentMap"] = self.agentMap
-    obsDict["Difference"] = np.array(self.objectCoords["objective"]) - np.array(self.objectCoords["agent"])
+    a = np.empty((3,3,2))
+    a[:,:,0] = self.agentMapHistory[0]
+    a[:,:,1] = self.agentMapHistory[1]
+
+    obsDict["AgentMap"] = a
+    obsDict["Difference"] = [self.agentDistanceHistory[0], self.agentDistanceHistory[1]]
+    #obsDict["Difference"] = np.array(self.objectCoords["objective"]) - np.array(self.objectCoords["agent"])
 
     return obsDict
 
@@ -267,6 +286,11 @@ class Explore2D_Env(gym.Env):
     self.groundTruthMap[objectiveCoords] =0
     self.spawnObjects()
     self.agentDetect()
+    
+    self.agentMapHistory.append(self.agentMap)
+    self.agentMapHistory.append(self.agentMap)
+    self.agentDistanceHistory.append(np.array(self.objectCoords["objective"]) - np.array(self.objectCoords["agent"]))
+    self.agentDistanceHistory.append(np.array(self.objectCoords["objective"]) - np.array(self.objectCoords["agent"]))
     return self.getState()
 
   def render(self, mode='human'):
