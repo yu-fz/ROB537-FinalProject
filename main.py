@@ -1,3 +1,4 @@
+from frontiers import FrontierPointFinder
 import gym
 import gym_Explore2D
 import wandb
@@ -100,21 +101,42 @@ if __name__ == "__main__":
             path_to_map = args.env_map
             env = gym.make(envName, map = path_to_map)
             model = DQN.load(args.model_path,env)
-            
+            obs = env.reset()
             stepCounter = 0
             done = False
-            obs = env.reset()
+            #obs = env.reset()
+            #print(freeCoords)
             #print(obs)
             rewardCnt = 0 
-            while not done:
-                  action, _states = model.predict(obs, deterministic=True)
-                  print(action)
-                  obs, reward, done, info = env.step(action)
-                  stepCounter+=1
-                  rewardCnt += reward
+            frontierMap = env.returnFrontierMap()
+            frontiers = FrontierPointFinder(frontierMap)
+
+
+            while (env.returnExplorationProgress() < 0.9):
+                  #print(env.returnExplorationProgress())
+                  frontiers.updateFrontierMap(env.returnFrontierMap())
+                  frontierWaypoint = frontiers.returnTargetFrontierPoint()
+                  #print(frontierWaypoint)
+                  env.setObjectiveCoord(frontierWaypoint)
+                  obs = env.resetFrontier()
                   #print(obs)
-                  #print(reward)
-            
+                  done = False
+                  while not done:
+                        
+                        action, _states = model.predict(obs, deterministic=True)
+                        #print(action)
+                        obs, reward, done, info = env.step(action)
+                        #frontierMap = env.returnFrontierMap()
+                        stepCounter+=1
+                        #rewardCnt += reward
+
+                        #print(obs)
+                        #print(reward)
+                  
+
+                  
+                  
+                  
             env.render()
             print("total reward : {rewardCnt}".format(rewardCnt = rewardCnt))
 

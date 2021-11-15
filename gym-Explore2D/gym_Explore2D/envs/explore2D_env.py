@@ -7,6 +7,8 @@ from gym import error, spaces, utils
 from gym.spaces import Discrete, Box, Dict
 from gym.utils import seeding
 import time
+
+from frontiers import FrontierPointFinder
 from collections import deque
 
 
@@ -18,8 +20,8 @@ class Explore2D_Env(gym.Env):
 
     pathToGroundTruthMap = kwargs["map"]
     self.groundTruthMap = np.loadtxt(pathToGroundTruthMap, delimiter=",").astype(int)
-    self.agentMapHistory = deque(maxlen=2)
-    self.agentDistanceHistory = deque(maxlen=2)
+    self.agentMapHistory = deque(maxlen=3)
+    self.agentDistanceHistory = deque(maxlen=3)
     self.agentMap = None
     self.state = None #state is agentMap array combined with number of steps remaining
     self.shape = self.groundTruthMap.shape
@@ -31,6 +33,7 @@ class Explore2D_Env(gym.Env):
     self.objectCoords = dict()
     #stepLimit is the maximum episode length -> emulates agent battery limits 
     self.stepLimit = 0
+    self.objectiveCoord = None
     self.distFromObjective = 0
     self.action_space = Discrete(4)
 
@@ -43,23 +46,26 @@ class Explore2D_Env(gym.Env):
     #                                       #"groundTruthMap": spaces.Box(low = 0, high = 3, shape = self.groundTruthMap.shape, dtype = np.uint8)
     #                                       })
 
-    self.observation_space = spaces.Dict({"AgentMap": spaces.Box(low = 0, high = 3, shape = (3,3,2)), 
+    self.observation_space = spaces.Dict({"AgentMap": spaces.Box(low = 0, high = 3, shape = (3,3,3)), 
                                           
                                           #"ObjectivePos": spaces.Box(low = 0, high = 100, shape = np.array([1,2]).shape, dtype = float),
                                           #"AgentPos": spaces.Box(low = 0, high = 100, shape = np.array([1,2]).shape, dtype = float),
-                                          "Difference": spaces.Box(low = 0, high = 255, shape = (2,2))
+                                          "Difference": spaces.Box(low = 0, high = 255, shape = (3,2))
                                           #"observationMap": spaces.Box(low = 0, high = 3, shape = self.groundTruthMap.shape, dtype = np.uint8),
                                           #"groundTruthMap": spaces.Box(low = 0, high = 3, shape = self.groundTruthMap.shape, dtype = np.uint8)
                                           })
 
 
-
-
-
   def getEnvSize(self):
     return self.shape
 
-  def spawnObjects(self):
+  
+  def setObjectiveCoord(self, objectiveCoord):
+    self.objectiveCoord = objectiveCoord
+    self.spawnObjective(objectiveCoord)
+
+
+  def spawnAgent(self):
     coordList = []
     random.seed(time.time())
     for i in range(2):
@@ -79,30 +85,50 @@ class Explore2D_Env(gym.Env):
     while(self.groundTruthMap[agentYCoord, agentXCoord] == 1):
       #if grid is obstructed, spawn again 
       #print("oops")  
+      
       self.objectCoords["agent"][1] = np.random.randint(low = 1, high = self.shape[1]-1)
       self.objectCoords["agent"][0] = np.random.randint(low = 1, high = self.shape[0]-1)
       agentXCoord = self.objectCoords["agent"][1]
       agentYCoord = self.objectCoords["agent"][0]
-
     
-    self.objectCoords["objective"][1] = np.random.randint(low = max(agentXCoord - 8, 1), high = min(agentXCoord + 8, self.shape[1]-1 ))
-    self.objectCoords["objective"][0] = np.random.randint(low = max(agentYCoord - 8, 1), high = min(agentYCoord + 8, self.shape[1]-1 ))
-
-    objectiveXCoord = self.objectCoords["objective"][1]
-    objectiveYCoord = self.objectCoords["objective"][0]
+    self.groundTruthMap[agentYCoord, agentXCoord] = 2 #agent represented as a 2 
 
 
-    while(self.groundTruthMap[objectiveYCoord, objectiveXCoord] == 1 or self.calculateDistance() < 3 ):
-      #if grid is obstructed, spawn again 
- 
-      self.objectCoords["objective"][1] = np.random.randint(low = max(agentXCoord - 8, 1), high = min(agentXCoord + 8, self.shape[1]-1 ))
-      self.objectCoords["objective"][0] = np.random.randint(low = max(agentYCoord - 8, 1), high = min(agentYCoord + 8, self.shape[1]-1 ))
+  def spawnObjective(self, objectiveCoord = None):
+
+
+    epsilon = 20
+
+
+    if(objectiveCoord is not None):
+
+        self.objectCoords["objective"][1] = self.objectiveCoord[1]
+        self.objectCoords["objective"][0] = self.objectiveCoord[0]
+        objectiveXCoord = self.objectiveCoord[1]
+        objectiveYCoord = self.objectiveCoord[0]
+        #print(self.objectCoords["objective"])
+        #self.groundTruthMap[objectiveYCoord, objectiveXCoord] = 3 
+
+    else:
+    
+      self.objectCoords["objective"][1] = np.random.randint(low = max(self.objectCoords["agent"][1] - epsilon, 1), high = min(self.objectCoords["agent"][1] + epsilon, self.shape[1]-1 ))
+      self.objectCoords["objective"][0] = np.random.randint(low = max(self.objectCoords["agent"][0] - epsilon, 1), high = min(self.objectCoords["agent"][0] + epsilon, self.shape[1]-1 ))
+
       objectiveXCoord = self.objectCoords["objective"][1]
       objectiveYCoord = self.objectCoords["objective"][0]
 
-    self.groundTruthMap[agentYCoord, agentXCoord] = 2
+
+      while(self.groundTruthMap[objectiveYCoord, objectiveXCoord] == 1 or self.calculateDistance() < 2 ):
+        #if grid is obstructed, spawn again 
+  
+        self.objectCoords["objective"][1] = np.random.randint(low = max(self.objectCoords["agent"][1] - epsilon, 1), high = min(self.objectCoords["agent"][1] + epsilon, self.shape[1]-1 ))
+        self.objectCoords["objective"][0] = np.random.randint(low = max(self.objectCoords["agent"][0] - epsilon, 1), high = min(self.objectCoords["agent"][0] + epsilon, self.shape[1]-1 ))
+        objectiveXCoord = self.objectCoords["objective"][1]
+        objectiveYCoord = self.objectCoords["objective"][0]
+
+
     #print("agent spawned at" + str(self.objectCoords["agent"]))
-    self.groundTruthMap[objectiveYCoord, objectiveXCoord] = 3
+    #self.groundTruthMap[objectiveYCoord, objectiveXCoord] = 3 
   
   # def generateAgentMap(self):
   #   agentPosition = self.objectCoords["agent"]
@@ -163,6 +189,12 @@ class Explore2D_Env(gym.Env):
         reward = 0.1
         return reward, done
 
+    if(self.agentDistanceHistory[2].all() == self.agentDistanceHistory[0].all()):
+
+      reward = -5
+      done = True
+
+      return reward, done
 
     else:
 
@@ -198,12 +230,14 @@ class Explore2D_Env(gym.Env):
     
     obsDict = {}
 
-    a = np.empty((3,3,2))
+    a = np.empty((3,3,3))
     a[:,:,0] = self.agentMapHistory[0]
     a[:,:,1] = self.agentMapHistory[1]
+    a[:,:,2] = self.agentMapHistory[2]
+
 
     obsDict["AgentMap"] = a
-    obsDict["Difference"] = [self.agentDistanceHistory[0], self.agentDistanceHistory[1]]
+    obsDict["Difference"] = [self.agentDistanceHistory[0], self.agentDistanceHistory[1], self.agentDistanceHistory[2]]
     #obsDict["Difference"] = np.array(self.objectCoords["objective"]) - np.array(self.objectCoords["agent"])
 
     return obsDict
@@ -278,19 +312,60 @@ class Explore2D_Env(gym.Env):
 
     return self.getState(), reward, done, info
 
+
+  def returnFrontierMap(self):
+
+    return self.observationMap
+
+
+  def resetFrontier(self):
+    self.stepLimit = self.shape[0]
+    # objectiveCoords = np.where(self.groundTruthMap == 3)
+    # agentCoords = np.where(self.groundTruthMap == 2)
+    # self.groundTruthMap[agentCoords] = 0
+    # self.groundTruthMap[objectiveCoords] =0
+    # self.spawnAgent()
+    self.spawnObjective(self.objectiveCoord)
+    self.agentDistanceHistory.append(np.array(self.objectCoords["objective"]) - np.array(self.objectCoords["agent"]))
+    # self.agentDetect()
+    
+    # for i in range(3):
+
+    #   self.agentMapHistory.append(self.agentMap)
+    #   self.agentDistanceHistory.append(np.array(self.objectCoords["objective"]) - np.array(self.objectCoords["agent"]))
+
+    return self.getState()
+
+  
+  def returnExplorationProgress(self):
+
+    totalNumberOfFreeGrids = len(np.where(self.groundTruthMap == 0)[0])
+    numOfRevealedFreeGrids = len(np.where(self.observationMap == 0)[0])
+
+    exploreFrac = (numOfRevealedFreeGrids/totalNumberOfFreeGrids)
+
+    return exploreFrac
+
+
+
+
+
+
   def reset(self):
-    self.stepLimit = 30
+    self.stepLimit = 50
     objectiveCoords = np.where(self.groundTruthMap == 3)
     agentCoords = np.where(self.groundTruthMap == 2)
     self.groundTruthMap[agentCoords] = 0
     self.groundTruthMap[objectiveCoords] =0
-    self.spawnObjects()
+    self.spawnAgent()
+    self.spawnObjective()
     self.agentDetect()
     
-    self.agentMapHistory.append(self.agentMap)
-    self.agentMapHistory.append(self.agentMap)
-    self.agentDistanceHistory.append(np.array(self.objectCoords["objective"]) - np.array(self.objectCoords["agent"]))
-    self.agentDistanceHistory.append(np.array(self.objectCoords["objective"]) - np.array(self.objectCoords["agent"]))
+    for i in range(3):
+
+      self.agentMapHistory.append(self.agentMap)
+      self.agentDistanceHistory.append(np.array(self.objectCoords["objective"]) - np.array(self.objectCoords["agent"]))
+
     return self.getState()
 
   def render(self, mode='human'):
