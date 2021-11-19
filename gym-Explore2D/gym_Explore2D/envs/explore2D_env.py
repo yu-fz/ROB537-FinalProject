@@ -7,10 +7,12 @@ from gym import error, spaces, utils
 from gym.spaces import Discrete, Box, Dict
 from gym.utils import seeding
 import time
-
-from frontiers import FrontierPointFinder
+import pdb
+from pathplanning import DijsktraSearch
+from frontiersnew import FrontierPointFinder
 from collections import deque
 
+################### have to see if the loop ever ends
 
 class Explore2D_Env(gym.Env):
   metadata = {'render.modes': ['human']}
@@ -55,15 +57,12 @@ class Explore2D_Env(gym.Env):
                                           #"groundTruthMap": spaces.Box(low = 0, high = 3, shape = self.groundTruthMap.shape, dtype = np.uint8)
                                           })
 
-
   def getEnvSize(self):
     return self.shape
-
   
   def setObjectiveCoord(self, objectiveCoord):
     self.objectiveCoord = objectiveCoord
     self.spawnObjective(objectiveCoord)
-
 
   def spawnAgent(self):
     coordList = []
@@ -92,7 +91,6 @@ class Explore2D_Env(gym.Env):
       agentYCoord = self.objectCoords["agent"][0]
     
     self.groundTruthMap[agentYCoord, agentXCoord] = 2 #agent represented as a 2 
-
 
   def spawnObjective(self, objectiveCoord = None):
 
@@ -221,8 +219,6 @@ class Explore2D_Env(gym.Env):
     self.agentMapHistory.append(self.agentMap)
     self.agentDistanceHistory.append(np.array(self.objectCoords["objective"]) - np.array(self.objectCoords["agent"]))
 
-
-
   def numActionsAvailable(self):
     return self.action_space.n
 
@@ -347,9 +343,14 @@ class Explore2D_Env(gym.Env):
     return exploreFrac
 
 
+  def performDijsktra(self):
+    # get in the frontier goal and the dijsktra map
+    fvar = FrontierPointFinder(self.returnFrontierMap())
+    fgoal, dmap = fvar.findFrontierCoords()
 
-
-
+    # save the path for analysis
+    dvar = DijsktraSearch(dmap, fgoal)
+    dvar.dijkstra()
 
   def reset(self):
     self.stepLimit = 50
