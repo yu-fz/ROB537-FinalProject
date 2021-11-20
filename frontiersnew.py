@@ -62,10 +62,10 @@ class FrontierPointFinder:
         
         # appending the 0,1 to the dijsktra map
         list_coordinate0 = np.where(self.frontierMap == 0)
-        list_coordinate = np.where(self.frontierMap == 1)
+        # list_coordinate = np.where(self.frontierMap == 1)
         self.dijsktraMap = []
-        for i in range(len(list_coordinate[0])):
-            self.dijsktraMap.append((list_coordinate[0][i], list_coordinate[1][i]))
+        # for i in range(len(list_coordinate[0])):
+        #    self.dijsktraMap.append((list_coordinate[0][i], list_coordinate[1][i]))
         for i in range(len(list_coordinate0[0])):
             self.dijsktraMap.append((list_coordinate0[0][i], list_coordinate0[1][i]))
         

@@ -349,7 +349,7 @@ class Explore2D_Env(gym.Env):
     fgoal, dmap = fvar.findFrontierCoords()
 
     # save the path for analysis
-    dvar = DijsktraSearch(dmap, fgoal)
+    dvar = DijsktraSearch(dmap, fgoal, np.where(self.groundTruthMap == 2))
     dvar.dijkstra()
 
   def reset(self):
