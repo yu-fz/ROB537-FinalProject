@@ -370,12 +370,12 @@ class Explore2D_Env(gym.Env):
     
     # right
     if fgoal[1] - 1 >= 0:
-      if self.observationMap[fgoal[0]][fgoal[1] + 1] == 3:
-        self.observationMap[fgoal[0]][fgoal[1] + 1] = self.groundTruthMap[fgoal[0]][fgoal[1] + 1]
+      if self.observationMap[fgoal[0]][fgoal[1] - 1] == 3:
+        self.observationMap[fgoal[0]][fgoal[1] - 1] = self.groundTruthMap[fgoal[0]][fgoal[1] - 1]
         if fgoal[0] + 1 <self.shape[0]: 
-          self.observationMap[fgoal[0] + 1][fgoal[1] + 1] = self.groundTruthMap[fgoal[0] + 1][fgoal[1] + 1]
+          self.observationMap[fgoal[0] + 1][fgoal[1] - 1] = self.groundTruthMap[fgoal[0] + 1][fgoal[1] - 1]
         if fgoal[0] - 1 >= 0: 
-          self.observationMap[fgoal[0] - 1][fgoal[1] + 1] = self.groundTruthMap[fgoal[0] - 1][fgoal[1] + 1]
+          self.observationMap[fgoal[0] - 1][fgoal[1] - 1] = self.groundTruthMap[fgoal[0] - 1][fgoal[1] - 1]
       
   def performDijsktra(self):
     # get in the frontier goal and the dijsktra map
@@ -390,7 +390,6 @@ class Explore2D_Env(gym.Env):
     # save the path for analysis
     dvar = DijsktraSearch(dmap, fgoal, snode)
     print(self.observationMap)
-    pdb.set_trace()
     return fgoal, dvar.dijkstra(), snode
 
   def reset(self):
