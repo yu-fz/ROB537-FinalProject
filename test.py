@@ -16,7 +16,6 @@ while (env.returnExplorationProgress() < 0.9):
   # env.step(randomMove) 
   stepCounter+=1 + dcost
   print(env.returnExplorationProgress())
-  print(initloc)
 
 print("agent completed {a} time steps".format(a = stepCounter))
 env.render()

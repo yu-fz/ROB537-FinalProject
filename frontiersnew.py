@@ -106,6 +106,8 @@ class FrontierPointFinder:
             self.dijsktraMap.append((list_coordinate2[0][i], list_coordinate2[1][i]))
             self.frontierCoords.append((list_coordinate2[0][i], list_coordinate2[1][i]))
         
+        print(self.frontierMap)
+        
 
     def findFrontierCoords(self):
         # the point with the minimum distance from the current location
