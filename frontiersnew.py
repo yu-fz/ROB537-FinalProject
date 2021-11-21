@@ -70,37 +70,43 @@ class FrontierPointFinder:
             self.dijsktraMap.append((list_coordinate0[0][i], list_coordinate0[1][i]))
         
         # generate 4 on the map
-        agentPosition = np.where(self.frontierMap == 2)
-        agentCoord = np.array([agentPosition[0][0],agentPosition[1][0]])
+        newmap = np.copy(self.frontierMap)
+        agentPosition = np.where(newmap == 2)
+        agentCoord = np.array([agentPosition[0],agentPosition[1]])
         rowID = agentCoord[0]
         columnID = agentCoord[1]
         if (columnID > 1):
-            self.frontierMap[rowID-1][columnID-2] = 4
-            self.frontierMap[rowID][columnID-2] = 4
-            self.frontierMap[rowID+1][columnID-2] = 4
+            if rowID - 1 >= 0:
+                newmap[rowID-1, columnID-1] = 4
+            newmap[rowID, columnID-1] = 4
+            newmap[rowID+1, columnID-1] = 4
 
-        if (columnID < self.frontierMap.shape[1]-2):
-            self.frontierMap[rowID-1][columnID+2] = 4
-            self.frontierMap[rowID][columnID+2] = 4
-            self.frontierMap[rowID+1][columnID+2] = 4
+        if (columnID < newmap.shape[1]-1):
+            if rowID - 1 >= 0:
+                newmap[rowID-1, columnID+1] = 4
+            newmap[rowID, columnID+1] = 4
+            newmap[rowID+1, columnID+1] = 4
         
         if (rowID > 1):
-            self.frontierMap[rowID-2][columnID-1] = 4
-            self.frontierMap[rowID-2][columnID] = 4
-            self.frontierMap[rowID-2][columnID+1] = 4
+            if columnID - 1 >= 0:
+                newmap[rowID-1, columnID-1] = 4
+            newmap[rowID-1, columnID] = 4
+            newmap[rowID-1, columnID+1] = 4
 
-        if (rowID < self.frontierMap.shape[0]-2):
-            self.frontierMap[rowID+2][columnID-1] = 4
-            self.frontierMap[rowID+2][columnID] = 4
-            self.frontierMap[rowID+2][columnID+1] = 4
+        if (rowID < newmap.shape[0]-1):
+            if columnID - 1 >= 0:               
+                newmap[rowID+1, columnID-1] = 4
+            newmap[rowID+1, columnID] = 4
+            newmap[rowID+1, columnID+1] = 4
 
         # appending 4 to the map and the frontierlist
-        list_coordinate2 = np.where(self.frontierMap == 4)
-        self.dijsktraMap.append((agentPosition[0][0],agentPosition[1][0]))
+        list_coordinate2 = np.where(newmap == 4)
+        self.dijsktraMap.append(agentPosition)
         for i in range(len(list_coordinate2[0])):
             self.dijsktraMap.append((list_coordinate2[0][i], list_coordinate2[1][i]))
             self.frontierCoords.append((list_coordinate2[0][i], list_coordinate2[1][i]))
         
+
     def findFrontierCoords(self):
         # the point with the minimum distance from the current location
         self.findFrontierCoordsDijsktra()

@@ -1,3 +1,4 @@
+# https://stackabuse.com/dijkstras-algorithm-in-python/
 import numpy as np
 import pdb
 from operator import itemgetter
@@ -16,8 +17,6 @@ class DijsktraSearch():
         self.final_path = []
         self.weights = [0 for i in range(len(self.dmap))]
         self.updateGraph()
-        self.dijkstra()
-        self.savePath()
     
     def updateGraph(self):
         self.graph.append([(int(self.sourceNode[0]), int(self.sourceNode[1])), 0])
@@ -42,7 +41,6 @@ class DijsktraSearch():
         for node in self.graph:
             if node[0] == self.fgoal:
                 self.fvertex = node[1]
-                print(self.fvertex,"final")
                 break
         for node in self.graph:
             if node[0] == self.sourceNode:
@@ -89,7 +87,8 @@ class DijsktraSearch():
         for i in D.keys():
             if D[i] != float('inf'):
                 self.final_path.append([i, D[i]])
-        print(D[self.fvertex])
+        self.savePath()
+        return(D[self.fvertex])
 
     def savePath(self):
         with open('dijsktra_path.csv', 'a') as f_object:
