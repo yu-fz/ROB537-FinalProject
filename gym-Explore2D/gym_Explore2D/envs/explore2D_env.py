@@ -39,6 +39,7 @@ class Explore2D_Env(gym.Env):
     self.distFromObjective = 0
     self.action_space = Discrete(4)
     self.fgoal = (0,0)
+    self.visited = []
 
     # self.observation_space = spaces.Dict({"AgentMap": spaces.Box(low = 0, high = 3, shape = self.agentMap.shape, dtype = np.uint8), 
                                           
@@ -378,15 +379,17 @@ class Explore2D_Env(gym.Env):
       
   def performDijsktra(self):
     # get in the frontier goal and the dijsktra map
-    #pdb.set_trace()
+    # keep track of the visited nodes
     snode = np.where(self.groundTruthMap == 2)
-    fvar = FrontierPointFinder(self.returnFrontierMap())
+    self.visited.append(snode)
+    fvar = FrontierPointFinder(self.returnFrontierMap(), self.visited)
     fgoal, dmap = fvar.findFrontierCoords()
     # update the observation map near the fgoal
     self.updateMaps(snode, fgoal)
     self.updateMaps2(fgoal)
     # save the path for analysis
     dvar = DijsktraSearch(dmap, fgoal, snode)
+    print(self.observationMap)
     pdb.set_trace()
     return fgoal, dvar.dijkstra(), snode
 
