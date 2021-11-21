@@ -210,9 +210,11 @@ class Explore2D_Env(gym.Env):
     
     return reward, done
 
-  def updateMaps(self, newPos, currPos):
+  def updateMaps(self, currPos, newPos):
     self.groundTruthMap[tuple(newPos)] = 2
     self.groundTruthMap[tuple(currPos)] = 0
+    self.observationMap[tuple(newPos)] = 2
+    self.observationMap[tuple(currPos)] = 0
     #self.agentMap[tuple(currPos)] = 0
     #self.agentMap[tuple(newPos)] = 2
     self.agentDetect()
@@ -340,7 +342,6 @@ class Explore2D_Env(gym.Env):
     return exploreFrac
 
   def updateMaps2(self, fgoal):
-    print(fgoal)
     # down
     if fgoal[0] + 1 < self.shape[0]:
       if self.observationMap[fgoal[0] + 1][fgoal[1]] == 3:
@@ -379,15 +380,14 @@ class Explore2D_Env(gym.Env):
     # get in the frontier goal and the dijsktra map
     #pdb.set_trace()
     snode = np.where(self.groundTruthMap == 2)
-    print(snode)
     fvar = FrontierPointFinder(self.returnFrontierMap())
     fgoal, dmap = fvar.findFrontierCoords()
     # update the observation map near the fgoal
-    self.updateMaps2(fgoal)
     self.updateMaps(snode, fgoal)
-
+    self.updateMaps2(fgoal)
     # save the path for analysis
     dvar = DijsktraSearch(dmap, fgoal, snode)
+    pdb.set_trace()
     return fgoal, dvar.dijkstra(), snode
 
   def reset(self):

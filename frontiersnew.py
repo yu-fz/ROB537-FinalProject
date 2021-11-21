@@ -103,11 +103,11 @@ class FrontierPointFinder:
         list_coordinate2 = np.where(newmap == 4)
         self.dijsktraMap.append(agentPosition)
         for i in range(len(list_coordinate2[0])):
-            self.dijsktraMap.append((list_coordinate2[0][i], list_coordinate2[1][i]))
-            self.frontierCoords.append((list_coordinate2[0][i], list_coordinate2[1][i]))
+            if self.frontierMap[list_coordinate2[0][i], list_coordinate2[1][i]] == 0:
+                self.frontierCoords.append((list_coordinate2[0][i], list_coordinate2[1][i]))
+                self.dijsktraMap.append((list_coordinate2[0][i], list_coordinate2[1][i]))
         
-        print(self.frontierMap)
-        
+        print(self.frontierMap, "init observation")        
 
     def findFrontierCoords(self):
         # the point with the minimum distance from the current location
@@ -118,6 +118,7 @@ class FrontierPointFinder:
             if dist < mindist:
                 mindist = dist
                 self.tragetFrontier = pts
+        print(self.tragetFrontier, "target")
         return self.tragetFrontier, self.dijsktraMap
 
     def returnTargetFrontierPoint(self):
