@@ -17,6 +17,32 @@ class FrontierPointFinder:
         self.tragetFrontier = []
         self.visited = visited_list
 
+    def FindFrontierMap(self):
+        agentPosition = np.where(self.frontierMap == 2)
+        agentCoord = np.array([agentPosition[0][0],agentPosition[1][0]])
+        rowID = agentCoord[0]
+        columnID = agentCoord[1]
+
+        newmap = np.copy(self.frontierMap)
+        shape = newmap.shape
+        j = [agentCoord[1]-1, agentCoord[1]+1]
+
+        for k in range(0, len(j)):
+          for i in range(agentCoord[0]-1, agentCoord[0]+1):
+            if (i in range(0,shape[0]) and j[k] in range(0, shape[1])):
+              if (newmap[i, j[k]] == 0):
+                newmap[i, j[k]] = 4
+
+        j = [agentCoord[0]-1, agentCoord[0]+1]
+
+        for k in range(0, len(j)):
+          for i in range(agentCoord[1]-1, agentCoord[1]+1):
+            if (i in range(0,shape[1]) and j[k] in range(0, shape[0])):
+              if (newmap[j[k], i] == 0):
+                newmap[j[k], i] = 4
+
+        return newmap
+
     def findFrontierCoordsDijsktra(self):
         # the frontier points are on the boundary of the explored map
         # [[3 3 3 3]
@@ -42,49 +68,52 @@ class FrontierPointFinder:
         # generate 4 on the map
         agentPosition = np.where(self.frontierMap == 2)
         agentCoord = np.array([agentPosition[0][0],agentPosition[1][0]])
-        rowID = agentCoord[0]
+        """ rowID = agentCoord[0]
         columnID = agentCoord[1]
         newmap = np.copy(self.frontierMap)
-        if (columnID >= 2):
+        if (columnID >= 1):
             if rowID - 1 >= 0:
-                newmap[rowID-1][columnID-2] = 4
-            newmap[rowID][columnID-2] = 4
+                newmap[rowID-1][columnID-1] = 4
+            newmap[rowID][columnID-1] = 4
             if rowID + 1 < newmap.shape[0]:
-                newmap[rowID+1][columnID-2] = 4
+                newmap[rowID+1][columnID-1] = 4
 
-        if (columnID < newmap.shape[1]-2):
+        if (columnID < newmap.shape[1]-1):
             if rowID - 1 >= 0:
-                newmap[rowID-1][columnID+2] = 4
-            newmap[rowID][columnID+2] = 4
+                newmap[rowID-1][columnID+1] = 4
+            newmap[rowID][columnID+1] = 4
             if rowID + 1 < newmap.shape[0]:
-                newmap[rowID+1][columnID+2] = 4
+                newmap[rowID+1][columnID+1] = 4
         
-        if (rowID - 2 >= 0):
+        if (rowID - 1 >= 0):
             if columnID - 1 >= 0:
-                newmap[rowID-2][columnID-1] = 4
-            newmap[rowID-2][columnID] = 4
+                newmap[rowID-1][columnID-1] = 4
+            newmap[rowID-1][columnID] = 4
             if columnID + 1 < newmap.shape[0]:
-                newmap[rowID-2][columnID+1] = 4
+                newmap[rowID-1][columnID+1] = 4
 
-        if (rowID < newmap.shape[0]-2):
+        if (rowID < newmap.shape[0]-1):
             if columnID - 1 >= 0:
-                newmap[rowID+2][columnID-1] = 4
-            newmap[rowID+2][columnID] = 4
+                newmap[rowID+1][columnID-1] = 4
+            newmap[rowID+1][columnID] = 4
             if columnID + 1 < newmap.shape[0]:
-                newmap[rowID+2][columnID+1] = 4
+                newmap[rowID+1][columnID+1] = 4 """
+        newmap = self.FindFrontierMap()
         print(newmap, "newmap")
 
         # appending 4 to the map and the frontierlist
         list_coordinate2 = np.where(newmap == 4)
+        list_coordinate3 = np.where(newmap == 1)
+
         self.dijsktraMap.append((agentPosition[0][0],agentPosition[1][0]))
         for i in range(len(list_coordinate2[0])):
             self.dijsktraMap.append((list_coordinate2[0][i], list_coordinate2[1][i]))
             self.frontierCoords.append((list_coordinate2[0][i], list_coordinate2[1][i]))
+        pdb.set_trace()
         for pts in self.frontierCoords:
-            if pts in self.visited:
+            if (pts in self.visited) or (pts in list_coordinate3):
                 self.frontierCoords.remove(pts)
-        
-        
+            
     def findFrontierCoords(self):
         # the point with the minimum distance from the current location
         self.findFrontierCoordsDijsktra()
