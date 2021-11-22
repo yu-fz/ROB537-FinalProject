@@ -72,6 +72,7 @@ class FrontierPointFinder:
             newmap[rowID+2][columnID] = 4
             if columnID + 1 < newmap.shape[0]:
                 newmap[rowID+2][columnID+1] = 4
+        print(newmap, "newmap")
 
         # appending 4 to the map and the frontierlist
         list_coordinate2 = np.where(newmap == 4)
@@ -83,13 +84,14 @@ class FrontierPointFinder:
             if pts in self.visited:
                 self.frontierCoords.remove(pts)
         
+        
     def findFrontierCoords(self):
         # the point with the minimum distance from the current location
         self.findFrontierCoordsDijsktra()
         mindist = 1000
         for pts in self.frontierCoords:
             dist = np.sqrt(np.power(self.agentPosition[0] - pts[0], 2) + np.power(self.agentPosition[1] - pts[1], 2))
-            if dist < mindist:
+            if dist <= mindist:
                 mindist = dist
                 self.tragetFrontier = pts
         return self.tragetFrontier, self.dijsktraMap
