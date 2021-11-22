@@ -88,7 +88,7 @@ class DijsktraSearch():
             if D[i] != float('inf'):
                 self.final_path.append([i, D[i]])
         self.savePath()
-        return(D[self.fvertex])
+        return(D[self.fvertex]), 
 
     def savePath(self):
         with open('dijsktra_path.csv', 'a') as f_object:
