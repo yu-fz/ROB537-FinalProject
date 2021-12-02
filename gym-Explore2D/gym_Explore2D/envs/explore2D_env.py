@@ -9,10 +9,12 @@ from gym.spaces import Discrete, Box, Dict
 from gym.utils import seeding
 
 import time
-
-from frontiers import FrontierPointFinder
+import pdb
+from pathplanning import DijsktraSearch
+from frontiersnew import FrontierPointFinder
 from collections import deque
 
+################### have to see if the loop ever ends
 
 class Explore2D_Env(gym.Env):
   metadata = {'render.modes': ['human']}
@@ -39,6 +41,8 @@ class Explore2D_Env(gym.Env):
     self.distFromObjective = 0
     self.lastObjectiveGridValue = None 
     self.action_space = Discrete(4)
+    self.fgoal = (0,0)
+    self.visited = []
 
     # self.observation_space = spaces.Dict({"AgentMap": spaces.Box(low = 0, high = 3, shape = self.agentMap.shape, dtype = np.uint8), 
                                           
@@ -58,15 +62,12 @@ class Explore2D_Env(gym.Env):
                                           #"groundTruthMap": spaces.Box(low = 0, high = 3, shape = self.groundTruthMap.shape, dtype = np.uint8)
                                           })
 
-
   def getEnvSize(self):
     return self.shape
-
   
   def setObjectiveCoord(self, objectiveCoord):
     self.objectiveCoord = objectiveCoord
     self.spawnObjective(objectiveCoord)
-
 
   def spawnAgent(self):
     coordList = []
@@ -95,7 +96,6 @@ class Explore2D_Env(gym.Env):
       agentYCoord = self.objectCoords["agent"][0]
     
     self.groundTruthMap[agentYCoord, agentXCoord] = 2 #agent represented as a 2 
-
 
   def spawnObjective(self, objectiveCoord = None):
 
@@ -221,14 +221,13 @@ class Explore2D_Env(gym.Env):
   def updateMaps(self, currPos, newPos):
     self.groundTruthMap[tuple(newPos)] = 2
     self.groundTruthMap[tuple(currPos)] = 0
+    self.observationMap[tuple(newPos)] = 2
+    self.observationMap[tuple(currPos)] = 0
     #self.agentMap[tuple(currPos)] = 0
     #self.agentMap[tuple(newPos)] = 2
-    self.objectCoords["agent"] = newPos
     self.agentDetect()
     self.agentMapHistory.append(self.agentMap)
     self.agentDistanceHistory.append(np.array(self.objectCoords["objective"]) - np.array(self.objectCoords["agent"]))
-
-
 
   def numActionsAvailable(self):
     return self.action_space.n
@@ -319,7 +318,6 @@ class Explore2D_Env(gym.Env):
 
     return self.getState(), reward, done, info
 
-
   def returnFrontierMap(self):
 
     return self.observationMap
@@ -338,7 +336,6 @@ class Explore2D_Env(gym.Env):
 
     return self.getState()
 
-  
   def returnExplorationProgress(self):
 
     totalNumberOfFreeGrids = len(np.where(self.groundTruthMap == 0)[0])
@@ -348,7 +345,55 @@ class Explore2D_Env(gym.Env):
 
     return exploreFrac
 
-
+  def updateMaps2(self, fgoal):
+    # down
+    if fgoal[0] + 1 < self.shape[0]:
+      if self.observationMap[fgoal[0] + 1][fgoal[1]] == 3:
+        self.observationMap[fgoal[0] + 1][fgoal[1]] = self.groundTruthMap[fgoal[0] + 1][fgoal[1]]
+        if fgoal[1] + 1 <self.shape[1]: 
+          self.observationMap[fgoal[0] + 1][fgoal[1] + 1] = self.groundTruthMap[fgoal[0] + 1][fgoal[1] + 1]
+        if fgoal[1] - 1 >= 0: 
+          self.observationMap[fgoal[0] + 1][fgoal[1] - 1] = self.groundTruthMap[fgoal[0] + 1][fgoal[1] - 1]
+    # up
+    if fgoal[0] - 1 >= 0:
+      if self.observationMap[fgoal[0] - 1][fgoal[1]] == 3:
+        self.observationMap[fgoal[0] - 1][fgoal[1]] = self.groundTruthMap[fgoal[0] - 1][fgoal[1]]
+        if fgoal[1] + 1 <self.shape[1]: 
+          self.observationMap[fgoal[0] - 1][fgoal[1] + 1] = self.groundTruthMap[fgoal[0] - 1][fgoal[1] + 1]
+        if fgoal[1] - 1 >= 0: 
+          self.observationMap[fgoal[0] - 1][fgoal[1] - 1] = self.groundTruthMap[fgoal[0] - 1][fgoal[1] - 1]
+    # left
+    if fgoal[1] + 1 < self.shape[1]:
+      if self.observationMap[fgoal[0]][fgoal[1] + 1] == 3:
+        self.observationMap[fgoal[0]][fgoal[1] + 1] = self.groundTruthMap[fgoal[0]][fgoal[1] + 1]
+        if fgoal[0] + 1 <self.shape[0]: 
+          self.observationMap[fgoal[0] + 1][fgoal[1] + 1] = self.groundTruthMap[fgoal[0] + 1][fgoal[1] + 1]
+        if fgoal[0] - 1 >= 0: 
+          self.observationMap[fgoal[0] - 1][fgoal[1] + 1] = self.groundTruthMap[fgoal[0] - 1][fgoal[1] + 1]
+    
+    # right
+    if fgoal[1] - 1 >= 0:
+      if self.observationMap[fgoal[0]][fgoal[1] - 1] == 3:
+        self.observationMap[fgoal[0]][fgoal[1] - 1] = self.groundTruthMap[fgoal[0]][fgoal[1] - 1]
+        if fgoal[0] + 1 <self.shape[0]: 
+          self.observationMap[fgoal[0] + 1][fgoal[1] - 1] = self.groundTruthMap[fgoal[0] + 1][fgoal[1] - 1]
+        if fgoal[0] - 1 >= 0: 
+          self.observationMap[fgoal[0] - 1][fgoal[1] - 1] = self.groundTruthMap[fgoal[0] - 1][fgoal[1] - 1]
+      
+  def performDijsktra(self):
+    # get in the frontier goal and the dijsktra map
+    # keep track of the visited nodes
+    snode = np.where(self.groundTruthMap == 2)
+    self.visited.append(snode)
+    fvar = FrontierPointFinder(self.returnFrontierMap(), self.visited)
+    fgoal, dmap = fvar.findFrontierCoords()
+    # update the observation map near the fgoal
+    self.updateMaps(snode, fgoal)
+    self.updateMaps2(fgoal)
+    # save the path for analysis
+    dvar = DijsktraSearch(dmap, fgoal, snode)
+    print(self.observationMap)
+    return fgoal, dvar.dijkstra(), snode
 
   def reset(self):
     self.stepLimit = 50
