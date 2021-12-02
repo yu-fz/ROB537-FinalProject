@@ -1,3 +1,5 @@
+from os import terminal_size
+from numpy.core.defchararray import index
 from frontiers import FrontierPointFinder
 import gym
 import gym_Explore2D
@@ -114,11 +116,14 @@ if __name__ == "__main__":
 
             while (env.returnExplorationProgress() < 0.9):
                   #print(env.returnExplorationProgress())
+                  #env.resetObjGrid()
                   frontiers.updateFrontierMap(env.returnFrontierMap())
                   frontierWaypoint = frontiers.returnTargetFrontierPoint()
                   #print(frontierWaypoint)
                   env.setObjectiveCoord(frontierWaypoint)
+                  #env.resetObjGrid()
                   obs = env.resetFrontier()
+                  #env.resetObjGrid()
                   #print(obs)
                   done = False
                   while not done:
@@ -127,20 +132,128 @@ if __name__ == "__main__":
                         #print(action)
                         obs, reward, done, info = env.step(action)
                         #frontierMap = env.returnFrontierMap()
+                        env.render()
+                        #env.saveObsImage(stepCounter)
                         stepCounter+=1
+                        
                         #rewardCnt += reward
 
                         #print(obs)
                         #print(reward)
                   
-
-                  
-                  
+                  env.resetObjGrid()
                   
             env.render()
             print("total reward : {rewardCnt}".format(rewardCnt = rewardCnt))
 
             print("agent completed {a} time steps".format(a = stepCounter))
 
+
+      elif mode == 'evalPlot':
+            
+            import numpy as np
+            import matplotlib.pyplot as plt
+            import seaborn as sns
+            import pandas as pd
+
+
+            path_to_map = args.env_map
+            env = gym.make(envName, map = path_to_map)
+            model = DQN.load(args.model_path,env)
+
+            trials = 50
+
+            stepData = np.empty([trials,10])
+            stepDataRandom = np.empty([trials,10])
+
+            x_axis = 100*np.arange(0,0.91,0.1)
+
+            for i in range(trials):
+
+                  env.reset()
+                  stepCounter = 0
+                  done = False
+                  #obs = env.reset()
+                  #print(freeCoords)
+                  #print(obs)
+                  rewardCnt = 0 
+                  frontierMap = env.returnFrontierMap()
+                  frontiers = FrontierPointFinder(frontierMap)
+
+                  stepsTaken = []
+                  exploreProgress = []
+
+                  while (env.returnExplorationProgress() < 0.9):
+                        frontiers.updateFrontierMap(env.returnFrontierMap())
+                        frontierWaypoint = frontiers.returnTargetFrontierPoint()
+
+                        env.setObjectiveCoord(frontierWaypoint)
+                        obs = env.resetFrontier()
+                        #print(obs)
+                        done = False
+                        while not done:
+                              
+                              action, _states = model.predict(obs, deterministic=True)
+                              #print(action)
+                              obs, reward, done, info = env.step(action)
+                              #frontierMap = env.returnFrontierMap()
+                              #env.render()
+                              #env.saveObsImage(stepCounter)
+                              stepCounter+=1                              
+                              #rewardCnt += reward
+
+                              #print(obs)
+                              #print(reward)
+                        
+                              currProgress = round(env.returnExplorationProgress(),1)
+                              if(currProgress not in exploreProgress):
+                                    exploreProgress.append(currProgress)
+                                    stepsTaken.append(stepCounter)
+                        env.resetObjGrid()
+
+                  stepData[i,:] = stepsTaken
+
+            print(stepData)
+
+            df = pd.DataFrame(data = stepData, columns= x_axis).T
+
+            for row in stepData:
+
+                  sns.regplot(x_axis, row, fit_reg=False, order = 2, color = "darkslateblue")
+                  #plt.scatter(x_axis, row, c = "blue")
+            #       df.append(row, ignore_index=True)
+            #sns.lineplot(data = df, err_style = "band",ci=68)
+            #plt.legend(["DQN Agent"])
+            # for i in range(trials):
+            #       env.reset()
+            #       totalReward = 0
+            #       stepCounter = 0
+            #       stepsTaken = []
+            #       exploreProgress = []
+            #       while (env.returnExplorationProgress() < 0.9):
+            #             randomMove = np.random.randint(low =0, high = 5) #RL agent takes observation and selects a move. RNG in placeholder of agent 
+            #             observation, reward, done, info = env.step(randomMove) 
+            #             #totalReward += reward
+            #             stepCounter+=1
+            #             currProgress = round(env.returnExplorationProgress(),1)
+            #             if(currProgress not in exploreProgress):
+            #                   exploreProgress.append(currProgress)
+            #                   stepsTaken.append(stepCounter)
+            #       stepDataRandom[i,:] = stepsTaken
+            
+            # for row in stepDataRandom:
+
+            #       sns.regplot(x_axis, row, fit_reg=False, color = "seagreen", marker = "x")
+                  
+            #plt.legend(["random agent"])
+            #print(df)
+            plt.xlabel("percentage of map uncovered")
+            plt.ylabel("path cost")
+            plt.grid()
+            plt.show()
+            #env.render()
+            # print("total reward : {rewardCnt}".format(rewardCnt = rewardCnt))
+
+            # print("agent completed {a} time steps".format(a = stepCounter))
 
 

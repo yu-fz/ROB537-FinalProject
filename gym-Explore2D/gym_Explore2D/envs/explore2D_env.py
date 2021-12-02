@@ -1,11 +1,13 @@
 import gym
 import numpy as np 
+import matplotlib
 import matplotlib.pyplot as plt
 import pandas as pd
 import random
 from gym import error, spaces, utils
 from gym.spaces import Discrete, Box, Dict
 from gym.utils import seeding
+
 import time
 
 from frontiers import FrontierPointFinder
@@ -35,6 +37,7 @@ class Explore2D_Env(gym.Env):
     self.stepLimit = 0
     self.objectiveCoord = None
     self.distFromObjective = 0
+    self.lastObjectiveGridValue = None 
     self.action_space = Discrete(4)
 
     # self.observation_space = spaces.Dict({"AgentMap": spaces.Box(low = 0, high = 3, shape = self.agentMap.shape, dtype = np.uint8), 
@@ -107,7 +110,9 @@ class Explore2D_Env(gym.Env):
         objectiveXCoord = self.objectiveCoord[1]
         objectiveYCoord = self.objectiveCoord[0]
         #print(self.objectCoords["objective"])
-        #self.groundTruthMap[objectiveYCoord, objectiveXCoord] = 3 
+        self.lastObjectiveGridValue = self.observationMap[objectiveYCoord, objectiveXCoord]
+
+        self.observationMap[objectiveYCoord, objectiveXCoord] = 4 
 
     else:
     
@@ -125,6 +130,8 @@ class Explore2D_Env(gym.Env):
         self.objectCoords["objective"][0] = np.random.randint(low = max(self.objectCoords["agent"][0] - epsilon, 1), high = min(self.objectCoords["agent"][0] + epsilon, self.shape[1]-1 ))
         objectiveXCoord = self.objectCoords["objective"][1]
         objectiveYCoord = self.objectCoords["objective"][0]
+
+      
 
 
     #print("agent spawned at" + str(self.objectCoords["agent"]))
@@ -189,11 +196,11 @@ class Explore2D_Env(gym.Env):
         reward = 0.1
         return reward, done
 
-    if(self.agentDistanceHistory[2].all() == self.agentDistanceHistory[0].all()):
+    if(self.stepLimit < 40 and (self.agentDistanceHistory[2].all() == self.agentDistanceHistory[0].all())):
 
       reward = -5
       done = True
-
+      #self.resetObjGrid()
       return reward, done
 
     else:
@@ -318,21 +325,16 @@ class Explore2D_Env(gym.Env):
     return self.observationMap
 
 
+  def resetObjGrid(self):
+    self.observationMap[self.objectCoords["objective"][0],self.objectCoords["objective"][1]] = 3#self.lastObjectiveGridValue
+
+
   def resetFrontier(self):
     self.stepLimit = self.shape[0]
-    # objectiveCoords = np.where(self.groundTruthMap == 3)
-    # agentCoords = np.where(self.groundTruthMap == 2)
-    # self.groundTruthMap[agentCoords] = 0
-    # self.groundTruthMap[objectiveCoords] =0
-    # self.spawnAgent()
+
     self.spawnObjective(self.objectiveCoord)
     self.agentDistanceHistory.append(np.array(self.objectCoords["objective"]) - np.array(self.objectCoords["agent"]))
-    # self.agentDetect()
-    
-    # for i in range(3):
 
-    #   self.agentMapHistory.append(self.agentMap)
-    #   self.agentDistanceHistory.append(np.array(self.objectCoords["objective"]) - np.array(self.objectCoords["agent"]))
 
     return self.getState()
 
@@ -348,15 +350,13 @@ class Explore2D_Env(gym.Env):
 
 
 
-
-
-
   def reset(self):
     self.stepLimit = 50
-    objectiveCoords = np.where(self.groundTruthMap == 3)
+    objectiveCoords = np.where(self.observationMap == 4)
     agentCoords = np.where(self.groundTruthMap == 2)
     self.groundTruthMap[agentCoords] = 0
     self.groundTruthMap[objectiveCoords] =0
+    self.observationMap = np.full(self.groundTruthMap.shape,3)
     self.spawnAgent()
     self.spawnObjective()
     self.agentDetect()
@@ -368,16 +368,27 @@ class Explore2D_Env(gym.Env):
 
     return self.getState()
 
+
+  def saveObsImage(self,step):
+    cmap = matplotlib.colors.ListedColormap(['midnightblue','darkorchid','red','goldenrod','lime'])
+    #plt.figure()
+
+    plt.imsave('./envImages/obsMap_{a}.png'.format(a = step), self.observationMap,cmap = cmap)
+
+  
   def render(self, mode='human'):
     
     #plt.imshow(self.groundTruthMap)
     #plt.show()
+    cmap1 = matplotlib.colors.ListedColormap(['midnightblue','darkorchid','red','goldenrod','lime'])
+    cmap2 = matplotlib.colors.ListedColormap(['midnightblue','darkorchid','red'])
+
     plt.figure()
-    plt.imshow(self.observationMap)
+    plt.imshow(self.observationMap, cmap = cmap1)
     plt.figure()
-    plt.imshow(self.agentMap)
+    plt.imshow(self.agentMap, cmap = cmap2)
     plt.figure()
-    plt.imshow(self.groundTruthMap)
+    plt.imshow(self.groundTruthMap, cmap = cmap2)
     plt.show()
 
   def close(self):
