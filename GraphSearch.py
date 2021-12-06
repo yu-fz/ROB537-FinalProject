@@ -1,5 +1,7 @@
 import numpy as np 
-import random 
+import random
+
+from numpy.core.fromnumeric import _trace_dispatcher 
 from frontiers import FrontierPointFinder
 import gym_Explore2DTrial
 import gym
@@ -20,6 +22,8 @@ class Exp_GraphSearch:
                 if (self.newMap[i, j] == 1):
                     self.newMap[i, j] = 0
         self.numVertices = self.newMap.shape[0] * self.newMap.shape[1] - 1 
+        self.total_steps = 0
+        self.initFlag = True
     
     def CheckBoundary(self, rowID, columnID):
         assignFrontierFlag = False
@@ -96,7 +100,6 @@ class Exp_GraphSearch:
         for i in range(0, len(frontierNodes[0])):
             frontierNode_to_vertice = frontierNodes[0][i] * self.newMap.shape[0] + frontierNodes[1][i]
             dist_frontier_source = np.linalg.norm([frontierNodes[0][i] - self.sourceNode[0][0], frontierNodes[1][i] - self.sourceNode[1][0]])
-            self.newMapTarget[frontierNodes[0][i]][frontierNodes[1][i]] = dist_frontier_source
             if ( dist_frontier_source == 1 ):
                 self.newMapWeight[self.sourceNode_to_vertice][frontierNode_to_vertice] = 1
                 self.newMapWeight[frontierNode_to_vertice][self.sourceNode_to_vertice] = self.newMapWeight[self.sourceNode_to_vertice][frontierNode_to_vertice]
@@ -122,11 +125,30 @@ class Exp_GraphSearch:
                         self.newMapWeight[y][x] = 1     
     
     
-    def ComputeTargetVertice(self):
+    def FindMinFrontier(self):
         targetCoords = np.where(self.frontierMap == 4)
-        count = random.choice([i for i in range(0, len(targetCoords[0]))])
-        targetCoord_x = targetCoords[0][count]
-        targetCoord_y = targetCoords[1][count]
+        
+        if (self.initFlag == False):
+            count = random.choice([i for i in range(0, len(targetCoords[0]))])
+            targetCoord_x = targetCoords[0][count]
+            targetCoord_y = targetCoords[1][count]
+        else:
+            min = float("Inf")
+
+            for i in range(0, len(targetCoords[0])):
+                dist_target_source = np.linalg.norm([targetCoords[0][i] - self.sourceNode[0][0], targetCoords[1][i] - self.sourceNode[1][0]])
+                self.newMapTarget[targetCoords[0][i]][targetCoords[1][i]] = dist_target_source
+            
+                if (self.newMapTarget[targetCoords[0][i]][targetCoords[1][i]] < min):
+                    min = self.newMapTarget[targetCoords[0][i]][targetCoords[1][i]]
+                    targetCoord_x = targetCoords[0][i]
+                    targetCoord_y = targetCoords[1][i]
+        
+        return targetCoord_x, targetCoord_y
+    
+    def ComputeTargetVertice(self):
+        targetCoord_x, targetCoord_y = self.FindMinFrontier() 
+        
         self.target_vertice = targetCoord_x * self.newMap.shape[0] + targetCoord_y
         return targetCoord_x, targetCoord_y
     
@@ -137,24 +159,26 @@ class Exp_GraphSearch:
         
         if (True):
             self.FindFrontier()       ## newMap == Frontier
- 
             self.sourceNode = np.where(self.newMap == 2) 
             self.sourceNode_to_vertice = self.sourceNode[0][0] * self.newMap.shape[0] + self.sourceNode[1][0]
         
             self.CreateWeightMatrix()
             
             path_step = False
+            self.initFlag = True
             while (path_step == False):
                 (target_x, target_y) = self.ComputeTargetVertice()
+                self.initFlag = False
                 path_step = self.dijkstra_compute(self.sourceNode_to_vertice, self.numVertices, self.target_vertice)
 
+            self.total_steps = self.total_steps + path_step
             targetCoord = (target_x, target_y)
             self.UpdateMap(targetCoord)
 
 
 if __name__ == "__main__":
     envName = "Explore2DTrial-v0"
-    path_to_map = "./maps/gridWorld_easy.csv"
+    path_to_map = "./maps/gridWorld_hard.csv"
     env = gym.make(envName, map = path_to_map)
     env.reset()
     stepCounter = 0
@@ -163,10 +187,11 @@ if __name__ == "__main__":
     
     startTime = time.time()
 
-    while (env.returnExplorationProgress() < 0.9):
+    while (env.returnExplorationProgress() < 0.90):
         g.Exp_Dijkstra_Frontier()
         stepCounter+=1
 
     print("agent completed {a} time steps".format(a = stepCounter))
     print("Run Time: ------%s seconds" % (time.time() - startTime))
+    print("Total Steps:", g.total_steps)
     env.render()
