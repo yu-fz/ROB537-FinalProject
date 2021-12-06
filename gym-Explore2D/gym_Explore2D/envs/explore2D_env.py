@@ -380,7 +380,7 @@ class Explore2D_Env(gym.Env):
     
     #plt.imshow(self.groundTruthMap)
     #plt.show()
-    cmap1 = matplotlib.colors.ListedColormap(['midnightblue','darkorchid','red','goldenrod','lime'])
+    cmap1 = matplotlib.colors.ListedColormap(['midnightblue','darkorchid','red','lime','goldenrod'])
     cmap2 = matplotlib.colors.ListedColormap(['midnightblue','darkorchid','red'])
 
     plt.figure()

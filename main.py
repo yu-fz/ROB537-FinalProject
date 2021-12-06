@@ -14,6 +14,7 @@ from stable_baselines3.common.env_util import make_vec_env
 from stable_baselines3.common.callbacks import CheckpointCallback, EveryNTimesteps, EvalCallback
 from wandb.integration.sb3 import WandbCallback
 
+from time import perf_counter
 
 if __name__ == "__main__":
       parser = argparse.ArgumentParser()
@@ -126,13 +127,14 @@ if __name__ == "__main__":
                   #env.resetObjGrid()
                   #print(obs)
                   done = False
+                  print(env.returnExplorationProgress() )
                   while not done:
                         
                         action, _states = model.predict(obs, deterministic=True)
                         #print(action)
                         obs, reward, done, info = env.step(action)
                         #frontierMap = env.returnFrontierMap()
-                        env.render()
+                        #env.render()
                         #env.saveObsImage(stepCounter)
                         stepCounter+=1
                         
@@ -161,27 +163,27 @@ if __name__ == "__main__":
             env = gym.make(envName, map = path_to_map)
             model = DQN.load(args.model_path,env)
 
-            trials = 50
+            trials = 10
 
             stepData = np.empty([trials,10])
+            timeData = np.empty([trials,10])
             stepDataRandom = np.empty([trials,10])
 
-            x_axis = 100*np.arange(0,0.91,0.1)
-
             for i in range(trials):
+                  print(i)
 
                   env.reset()
                   stepCounter = 0
                   done = False
-                  #obs = env.reset()
-                  #print(freeCoords)
-                  #print(obs)
+
                   rewardCnt = 0 
                   frontierMap = env.returnFrontierMap()
                   frontiers = FrontierPointFinder(frontierMap)
 
                   stepsTaken = []
                   exploreProgress = []
+                  executionTimes =  []
+                  startTime = perf_counter()
 
                   while (env.returnExplorationProgress() < 0.9):
                         frontiers.updateFrontierMap(env.returnFrontierMap())
@@ -191,6 +193,8 @@ if __name__ == "__main__":
                         obs = env.resetFrontier()
                         #print(obs)
                         done = False
+                        #startTime = perf_counter()
+
                         while not done:
                               
                               action, _states = model.predict(obs, deterministic=True)
@@ -200,60 +204,28 @@ if __name__ == "__main__":
                               #env.render()
                               #env.saveObsImage(stepCounter)
                               stepCounter+=1                              
-                              #rewardCnt += reward
 
-                              #print(obs)
-                              #print(reward)
-                        
+                              newTime = perf_counter()
+                              #calculate elapsed time
+                              timeElapsed = round(newTime - startTime, 4)
+
                               currProgress = round(env.returnExplorationProgress(),1)
+                              #if exploration progress increased by 10%, append time and path cost to np arrays for plotting
                               if(currProgress not in exploreProgress):
                                     exploreProgress.append(currProgress)
                                     stepsTaken.append(stepCounter)
+                                    executionTimes.append(timeElapsed)
+
+                              
                         env.resetObjGrid()
 
                   stepData[i,:] = stepsTaken
 
-            print(stepData)
+                  timeData[i,:] = executionTimes
 
-            df = pd.DataFrame(data = stepData, columns= x_axis).T
+            #save np array to file
 
-            for row in stepData:
-
-                  sns.regplot(x_axis, row, fit_reg=False, order = 2, color = "darkslateblue")
-                  #plt.scatter(x_axis, row, c = "blue")
-            #       df.append(row, ignore_index=True)
-            #sns.lineplot(data = df, err_style = "band",ci=68)
-            #plt.legend(["DQN Agent"])
-            # for i in range(trials):
-            #       env.reset()
-            #       totalReward = 0
-            #       stepCounter = 0
-            #       stepsTaken = []
-            #       exploreProgress = []
-            #       while (env.returnExplorationProgress() < 0.9):
-            #             randomMove = np.random.randint(low =0, high = 5) #RL agent takes observation and selects a move. RNG in placeholder of agent 
-            #             observation, reward, done, info = env.step(randomMove) 
-            #             #totalReward += reward
-            #             stepCounter+=1
-            #             currProgress = round(env.returnExplorationProgress(),1)
-            #             if(currProgress not in exploreProgress):
-            #                   exploreProgress.append(currProgress)
-            #                   stepsTaken.append(stepCounter)
-            #       stepDataRandom[i,:] = stepsTaken
-            
-            # for row in stepDataRandom:
-
-            #       sns.regplot(x_axis, row, fit_reg=False, color = "seagreen", marker = "x")
-                  
-            #plt.legend(["random agent"])
-            #print(df)
-            plt.xlabel("percentage of map uncovered")
-            plt.ylabel("path cost")
-            plt.grid()
-            plt.show()
-            #env.render()
-            # print("total reward : {rewardCnt}".format(rewardCnt = rewardCnt))
-
-            # print("agent completed {a} time steps".format(a = stepCounter))
+            np.save(f"timeDataArray_rooms", timeData)
+            np.save(f"stepDataArray_rooms", stepData)
 
 
